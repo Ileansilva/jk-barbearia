@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520">
+<defs>
+<radialGradient id="g" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="#3a3023"/><stop offset=".55" stop-color="#171515"/><stop offset="1" stop-color="#090909"/></radialGradient>
+<linearGradient id="gold" x1="0" x2="1"><stop stop-color="#f3d38d"/><stop offset=".5" stop-color="#b88035"/><stop offset="1" stop-color="#e4b65d"/></linearGradient>
+</defs>
+<rect width="800" height="520" fill="url(#g)"/>
+<circle cx="400" cy="225" r="130" fill="#111" stroke="url(#gold)" stroke-width="4"/>
+<text x="400" y="270" text-anchor="middle" font-size="130" fill="url(#gold)">♜</text>
+<text x="400" y="410" text-anchor="middle" font-size="40" font-weight="800" fill="#f6efe3" font-family="Arial">BARBA</text>
+<text x="400" y="450" text-anchor="middle" font-size="22" fill="#bcb3a7" font-family="Arial">Desenho e acabamento</text>
+</svg>

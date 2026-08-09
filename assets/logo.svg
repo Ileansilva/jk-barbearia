@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" role="img" aria-labelledby="title desc">
+<title id="title">JK Barbearia</title>
+<desc id="desc">Logo JK Barbearia em preto, dourado e creme</desc>
+<defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f7d58a"/>
+    <stop offset=".5" stop-color="#c99643"/>
+    <stop offset="1" stop-color="#f1c66d"/>
+  </linearGradient>
+</defs>
+<rect width="640" height="220" rx="28" fill="#0d0d0e"/>
+<g transform="translate(34 22)">
+  <circle cx="88" cy="88" r="76" fill="none" stroke="url(#gold)" stroke-width="5"/>
+  <path d="M39 46h28v66c0 22-10 38-33 48l-12-22c12-6 17-14 17-27z" fill="url(#gold)"/>
+  <path d="M84 46h27v42l36-42h33l-43 49 47 64h-34l-32-45-7 8v37H84z" fill="#f6efe3"/>
+</g>
+<g transform="translate(218 66)">
+  <text x="0" y="49" fill="#f6efe3" font-size="55" font-weight="800" font-family="Arial, Helvetica, sans-serif" letter-spacing="4">JK</text>
+  <text x="92" y="49" fill="url(#gold)" font-size="42" font-weight="700" font-family="Arial, Helvetica, sans-serif" letter-spacing="2">BARBEARIA</text>
+  <line x1="2" y1="70" x2="379" y2="70" stroke="url(#gold)" stroke-width="2"/>
+  <text x="3" y="98" fill="#aaa39a" font-size="15" font-family="Arial, Helvetica, sans-serif" letter-spacing="5">ESTILO • PRECISÃO • ATITUDE</text>
+</g>
+</svg>
