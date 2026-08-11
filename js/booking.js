@@ -1,82 +1,147 @@
+let selectedTime="", settings=null, services=[], barbers=[];
 
-let selectedTime="", settings=null, services=[];
 document.addEventListener("DOMContentLoaded", async ()=>{
-  const date=document.querySelector("#date"); date.min=JK.todayISO();
+  const date=document.querySelector("#date");
+  date.min=JK.todayISO();
   document.querySelector("#bookingForm").addEventListener("submit",submitBooking);
   date.addEventListener("change",renderTimes);
-  document.querySelector("#service").addEventListener("change",renderSummary);
+  document.querySelector("#service").addEventListener("change",()=>{selectedTime="";renderSummary();renderTimes();});
+  document.querySelector("#barber").addEventListener("change",()=>{selectedTime="";renderSummary();renderTimes();});
   await loadBase();
 });
+
 async function loadBase(){
-  const [s1,s2]=await Promise.all([
-    sb.from("services").select("*").eq("active",true).order("sort_order"),
-    sb.from("settings").select("*").eq("id",1).single()
+  const [s1,s2,s3]=await Promise.all([
+    sb.from("services").select("*").eq("active",true).order("sort_order").order("id"),
+    sb.from("settings").select("*").eq("id",1).single(),
+    sb.from("barbers").select("*").eq("active",true).order("sort_order").order("id")
   ]);
-  if(s1.error) return toast("Não foi possível carregar os serviços.","error");
-  if(s2.error) return toast("Não foi possível carregar os horários da barbearia.","error");
-  services=s1.data; settings=s2.data;
-  const sel=document.querySelector("#service");
-  sel.innerHTML='<option value="">Selecione um serviço</option>'+services.map(s=>`<option value="${s.id}">${JK.esc(s.name)} — ${JK.money(s.price)}</option>`).join("");
-  const pre=new URLSearchParams(location.search).get("service"); if(pre)sel.value=pre;
+
+  if(s1.error)return toast("Não foi possível carregar os serviços.","error");
+  if(s2.error)return toast("Não foi possível carregar os horários da barbearia.","error");
+  if(s3.error)return toast("Não foi possível carregar os barbeiros.","error");
+
+  services=s1.data||[];
+  settings=s2.data;
+  barbers=s3.data||[];
+
+  const serviceSel=document.querySelector("#service");
+  serviceSel.innerHTML='<option value="">Selecione um serviço</option>'+services.map(s=>`<option value="${s.id}">${JK.esc(s.name)} — ${JK.money(s.price)}</option>`).join("");
+
+  const barberSel=document.querySelector("#barber");
+  barberSel.innerHTML=barbers.length
+    ? '<option value="">Selecione um barbeiro</option>'+barbers.map(b=>`<option value="${b.id}">${JK.esc(b.name)}</option>`).join("")
+    : '<option value="">Nenhum barbeiro disponível</option>';
+
+  const pre=new URLSearchParams(location.search).get("service");
+  if(pre)serviceSel.value=pre;
   renderSummary();
 }
-function generateTimes(){
-  const [sh,sm]=settings.open_time.slice(0,5).split(":").map(Number);
-  const [eh,em]=settings.close_time.slice(0,5).split(":").map(Number);
-  let m=sh*60+sm,end=eh*60+em,out=[];
-  while(m<end){out.push(`${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`);m+=Number(settings.slot_interval_minutes||30);}
-  return out;
-}
+
 async function renderTimes(){
-  selectedTime="";renderSummary();
-  const date=document.querySelector("#date").value,root=document.querySelector("#times");
-  if(!date){root.innerHTML='<div class="empty" style="grid-column:1/-1">Escolha uma data.</div>';return;}
-  const day=new Date(date+"T12:00:00").getDay();
-  const workDays=(settings.work_days||[]).map(Number);
-  const blocked=(settings.blocked_dates||[]);
-  if(!workDays.includes(day)||blocked.includes(date)){root.innerHTML='<div class="empty" style="grid-column:1/-1">Não atendemos nesta data.</div>';return;}
-  root.innerHTML='<div class="empty" style="grid-column:1/-1">Consultando horários...</div>';
-  const {data,error}=await sb.rpc("get_booked_times",{p_date:date});
-  if(error){root.innerHTML='<div class="empty" style="grid-column:1/-1">Não foi possível consultar a agenda.</div>';return;}
-  const booked=(data||[]).map(x=>String(x.booked_time).slice(0,5));
-  const now=new Date(),today=date===JK.todayISO();
-  root.innerHTML=generateTimes().map(t=>{
-    const [h,m]=t.split(":").map(Number); const elapsed=today&&(h*60+m<=now.getHours()*60+now.getMinutes());
-    const dis=booked.includes(t)||elapsed;
-    return `<button type="button" class="time-btn" ${dis?"disabled":""} data-time="${t}">${t}</button>`;
-  }).join("");
-  root.querySelectorAll(".time-btn:not(:disabled)").forEach(btn=>btn.addEventListener("click",()=>{root.querySelectorAll(".time-btn").forEach(x=>x.classList.remove("active"));btn.classList.add("active");selectedTime=btn.dataset.time;renderSummary();}));
+  selectedTime="";
+  renderSummary();
+
+  const date=document.querySelector("#date").value;
+  const serviceId=Number(document.querySelector("#service").value);
+  const barberId=Number(document.querySelector("#barber").value);
+  const root=document.querySelector("#times");
+
+  if(!serviceId||!barberId||!date){
+    root.innerHTML='<div class="empty" style="grid-column:1/-1">Escolha serviço, barbeiro e data.</div>';
+    return;
+  }
+
+  root.innerHTML='<div class="empty" style="grid-column:1/-1">Consultando agenda do barbeiro...</div>';
+
+  const {data,error}=await sb.rpc("get_available_times",{
+    p_date:date,
+    p_barber_id:barberId,
+    p_service_id:serviceId
+  });
+
+  if(error){
+    console.error(error);
+    root.innerHTML='<div class="empty" style="grid-column:1/-1">Não foi possível consultar a agenda.</div>';
+    return;
+  }
+
+  const available=(data||[]).map(x=>String(x.available_time).slice(0,5));
+  if(!available.length){
+    root.innerHTML='<div class="empty" style="grid-column:1/-1">Nenhum horário disponível para este barbeiro nesta data.</div>';
+    return;
+  }
+
+  root.innerHTML=available.map(t=>`<button type="button" class="time-btn" data-time="${t}">${t}</button>`).join("");
+  root.querySelectorAll(".time-btn").forEach(btn=>btn.addEventListener("click",()=>{
+    root.querySelectorAll(".time-btn").forEach(x=>x.classList.remove("active"));
+    btn.classList.add("active");
+    selectedTime=btn.dataset.time;
+    renderSummary();
+  }));
 }
+
 function renderSummary(){
   const sid=document.querySelector("#service")?.value;
+  const bid=document.querySelector("#barber")?.value;
   const s=services.find(x=>String(x.id)===String(sid));
+  const b=barbers.find(x=>String(x.id)===String(bid));
+
+  document.querySelector("#summaryBarber").textContent=b?.name||"—";
   document.querySelector("#summaryService").textContent=s?.name||"—";
   document.querySelector("#summaryPrice").textContent=s?JK.money(s.price):"—";
+
   const d=document.querySelector("#date")?.value;
   document.querySelector("#summaryDate").textContent=d?new Date(d+"T12:00:00").toLocaleDateString("pt-BR"):"—";
   document.querySelector("#summaryTime").textContent=selectedTime||"—";
 }
+
 async function submitBooking(e){
   e.preventDefault();
+  const form=e.currentTarget;
+  const f=new FormData(form);
+  const barberId=Number(f.get("barber"));
+  const serviceId=Number(f.get("service"));
+
+  if(!barberId)return toast("Escolha um barbeiro.","error");
+  if(!serviceId)return toast("Escolha um serviço.","error");
   if(!selectedTime)return toast("Escolha um horário.","error");
-  const btn=e.currentTarget.querySelector("button[type=submit]");btn.disabled=true;btn.textContent="Confirmando...";
-  const f=new FormData(e.currentTarget);
-  const {data,error}=await sb.rpc("create_booking",{
-    p_client_name:String(f.get("name")).trim(),
-    p_phone:String(f.get("phone")).trim(),
-    p_service_id:Number(f.get("service")),
+
+  const btn=form.querySelector("button[type=submit]");
+  if(btn.disabled)return;
+  btn.disabled=true;
+  btn.textContent="Confirmando...";
+
+  const {data,error}=await sb.rpc("create_booking_with_barber",{
+    p_client_name:String(f.get("name")||"").trim(),
+    p_phone:String(f.get("phone")||"").trim(),
+    p_service_id:serviceId,
+    p_barber_id:barberId,
     p_booking_date:f.get("date"),
     p_booking_time:selectedTime,
     p_notes:String(f.get("notes")||"").trim()
   });
-  btn.disabled=false;btn.textContent="Confirmar agendamento";
+
+  btn.disabled=false;
+  btn.textContent="Confirmar agendamento";
+
   if(error){
-    if(String(error.message).toLowerCase().includes("horário")||String(error.message).toLowerCase().includes("slot")) await renderTimes();
+    await renderTimes();
     return toast(error.message||"Não foi possível concluir o agendamento.","error");
   }
+
   document.querySelector("#protocol").textContent=data;
   document.querySelector("#successBox").style.display="block";
-  e.currentTarget.reset();selectedTime="";document.querySelector("#times").innerHTML='<div class="empty" style="grid-column:1/-1">Escolha uma data.</div>';renderSummary();
+  form.reset();
+  selectedTime="";
+  document.querySelector("#times").innerHTML='<div class="empty" style="grid-column:1/-1">Escolha serviço, barbeiro e data.</div>';
+  renderSummary();
   toast("Agendamento realizado com sucesso!","success");
 }
-function toast(msg,type="success"){const t=document.querySelector("#toast");t.textContent=msg;t.className=`toast ${type} show`;setTimeout(()=>t.classList.remove("show"),4000);}
+
+function toast(msg,type="success"){
+  const t=document.querySelector("#toast");
+  t.textContent=msg;
+  t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove("show"),4000);
+}
