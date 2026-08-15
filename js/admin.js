@@ -1,4 +1,4 @@
-let session=null, services=[], barbers=[];
+let session=null, services=[], barbers=[], galleryItems=[];
 const $=(s)=>document.querySelector(s);
 
 function adminToast(message,error=false){
@@ -22,6 +22,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
   document.querySelectorAll("[data-panel]").forEach(b=>b.addEventListener("click",()=>switchPanel(b.dataset.panel,b)));
   $("#serviceForm")?.addEventListener("submit",saveService);
   $("#barberForm")?.addEventListener("submit",saveBarber);
+  $("#galleryForm")?.addEventListener("submit",saveGalleryItem);
   $("#settingsForm")?.addEventListener("submit",saveSettings);
 
   const {data,error}=await sb.auth.getSession();
@@ -56,7 +57,7 @@ function switchPanel(id,btn){
 
 async function renderAll(){
   const r=await Promise.allSettled([
-    renderKPIs(),renderBookings(),renderServicesAdmin(),renderBarbersAdmin(),loadSettings()
+    renderKPIs(),renderBookings(),renderServicesAdmin(),renderBarbersAdmin(),renderGalleryAdmin(),loadSettings()
   ]);
   r.forEach(x=>{if(x.status==="rejected")console.error(x.reason)});
 }
@@ -72,12 +73,14 @@ async function renderKPIs(){
   $("#kpiMonth").textContent=monthList.length;
   $("#kpiRevenue").textContent=JK.money(monthList.reduce((a,x)=>a+Number(x.price||0),0));
 
-  const [svc,brb]=await Promise.all([
+  const [svc,brb,gal]=await Promise.all([
     sb.from("services").select("*",{count:"exact",head:true}).eq("active",true),
-    sb.from("barbers").select("*",{count:"exact",head:true}).eq("active",true)
+    sb.from("barbers").select("*",{count:"exact",head:true}).eq("active",true),
+    sb.from("gallery").select("*",{count:"exact",head:true}).eq("active",true)
   ]);
   $("#kpiServices").textContent=svc.count||0;
   $("#kpiBarbers").textContent=brb.count||0;
+  if($("#kpiGallery"))$("#kpiGallery").textContent=gal.count||0;
 }
 
 async function renderBookings(){
@@ -275,6 +278,74 @@ async function removeBarber(id){
   adminToast("Barbeiro excluído.");
   await renderBarbersAdmin();await renderKPIs();
 }
+
+
+async function renderGalleryAdmin(){
+  const root=$("#galleryAdminGrid"); if(!root)return;
+  root.innerHTML='<div class="empty">Carregando galeria...</div>';
+  const {data,error}=await sb.from("gallery").select("*").order("sort_order").order("id",{ascending:false});
+  if(error){root.innerHTML='<div class="empty">Erro ao carregar a galeria.</div>';console.error(error);return;}
+  galleryItems=data||[];
+  if(!galleryItems.length){root.innerHTML='<div class="empty">Nenhuma foto publicada ainda. Adicione os primeiros trabalhos acima.</div>';return;}
+  root.innerHTML=galleryItems.map(g=>`<article class="gallery-admin-card">
+    <img src="${JK.esc(g.image_url)}" alt="${JK.esc(g.title||'Trabalho da galeria')}">
+    <div class="gallery-admin-body"><strong>${JK.esc(g.title||'Sem título')}</strong><p class="muted">${JK.esc(g.caption||'Sem legenda')}</p><span class="gallery-state ${g.active?'on':'off'}">${g.active?'Publicado':'Oculto'}</span>
+    <div class="action-row"><button type="button" class="mini-btn" onclick="editGalleryItem(${g.id})">Editar</button><button type="button" class="mini-btn" onclick="toggleGalleryItem(${g.id},${!g.active})">${g.active?'Ocultar':'Publicar'}</button><button type="button" class="mini-btn" onclick="removeGalleryItem(${g.id})">Excluir</button></div></div>
+  </article>`).join("");
+}
+
+async function uploadGalleryImage(file){
+  if(!(file instanceof File)||!file.size)return null;
+  if(!file.type.startsWith("image/"))throw new Error("Selecione apenas arquivos de imagem.");
+  if(file.size>12*1024*1024)throw new Error("Cada foto deve ter no máximo 12 MB.");
+  const ext=(file.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"");
+  const path=`works/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext||'jpg'}`;
+  const {error}=await sb.storage.from("gallery-images").upload(path,file,{upsert:false,cacheControl:"3600"});
+  if(error)throw error;
+  return sb.storage.from("gallery-images").getPublicUrl(path).data.publicUrl;
+}
+
+async function saveGalleryItem(e){
+  e.preventDefault();
+  const form=e.currentTarget,btn=$("#gallerySaveBtn");
+  if(btn?.disabled)return;
+  const original=btn?.textContent||"Publicar na galeria";
+  const f=new FormData(form), id=String(f.get("id")||"").trim();
+  const title=String(f.get("title")||"").trim(), caption=String(f.get("caption")||"").trim(), sort_order=Number(f.get("sort_order")||0);
+  const files=Array.from($("#galleryFiles")?.files||[]);
+  if(!id && !files.length)return adminToast("Selecione pelo menos uma foto.",true);
+  if(btn){btn.disabled=true;btn.textContent=files.length>1?`Enviando ${files.length} fotos...`:"Salvando...";}
+  try{
+    if(id){
+      let image_url=String(f.get("current_image")||"");
+      if(files[0])image_url=await uploadGalleryImage(files[0]);
+      const {error}=await sb.from("gallery").update({title,caption,sort_order,image_url}).eq("id",Number(id));
+      if(error)throw error;
+      adminToast("Foto atualizada com sucesso.");
+    }else{
+      const rows=[];
+      for(let i=0;i<files.length;i++){
+        if(btn)btn.textContent=`Enviando ${i+1} de ${files.length}...`;
+        const image_url=await uploadGalleryImage(files[i]);
+        rows.push({title,caption,sort_order:sort_order+i,image_url,active:true});
+      }
+      const {error}=await sb.from("gallery").insert(rows);
+      if(error)throw error;
+      adminToast(files.length>1?`${files.length} fotos publicadas com sucesso.`:"Foto publicada com sucesso.");
+    }
+    form.reset();$("#galleryId").value="";$("#galleryCurrentImage").value="";$("#gallerySort").value="0";
+    await renderGalleryAdmin();await renderKPIs();
+  }catch(err){console.error(err);adminToast("Erro na galeria: "+(err?.message||"erro desconhecido"),true);}
+  finally{if(btn){btn.disabled=false;btn.textContent=original;}}
+}
+
+function editGalleryItem(id){
+  const g=galleryItems.find(x=>Number(x.id)===Number(id)); if(!g)return;
+  $("#galleryId").value=g.id;$("#galleryCurrentImage").value=g.image_url||"";$("#galleryTitle").value=g.title||"";$("#galleryCaption").value=g.caption||"";$("#gallerySort").value=g.sort_order??0;$("#galleryFiles").value="";
+  $("#galleryForm").scrollIntoView({behavior:"smooth",block:"start"}); adminToast("Foto carregada para edição.");
+}
+async function toggleGalleryItem(id,active){const {error}=await sb.from("gallery").update({active}).eq("id",id);if(error)return adminToast("Erro ao alterar foto: "+error.message,true);adminToast(active?"Foto publicada.":"Foto ocultada.");await renderGalleryAdmin();await renderKPIs();}
+async function removeGalleryItem(id){if(!confirm("Excluir esta foto da galeria?"))return;const {error}=await sb.from("gallery").delete().eq("id",id);if(error)return adminToast("Erro ao excluir: "+error.message,true);adminToast("Foto excluída da galeria.");await renderGalleryAdmin();await renderKPIs();}
 
 async function loadSettings(){
   const {data,error}=await sb.from("settings").select("*").eq("id",1).single();
