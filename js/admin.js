@@ -1,7 +1,30 @@
+/*
+==========================================================
+JK BARBEARIA - PAINEL ADMINISTRATIVO
+==========================================================
+Arquivo principal do proprietário.
+
+Controla:
+- login
+- dashboard
+- agendamentos
+- serviços
+- barbeiros
+- financeiro
+- galeria
+- configurações
+
+DICA PARA REVENDA:
+Prefira alterar textos/cores/identidade nos arquivos HTML/CSS
+e dados da empresa pelo painel de Configurações.
+==========================================================
+*/
+
 let session=null, services=[], barbers=[], galleryItems=[], financeBookings=[], currentProfileBarberId=null;
 let serviceCropState={img:null,file:null,zoom:100,x:0,y:0};
 const $=(s)=>document.querySelector(s);
 
+// ===== MENSAGENS RÁPIDAS DO PAINEL =====
 function adminToast(message,error=false){
   let el=$("#adminToast");
   if(!el){
@@ -37,6 +60,8 @@ document.addEventListener("DOMContentLoaded",async()=>{
   $("#financePeriodFilter")?.addEventListener("change",()=>{clearFinanceDate();clearFinanceMonth();renderFinance();});
   $("#financeTodayFilterBtn")?.addEventListener("click",()=>{setFinanceDate(localDateISO());clearFinanceMonth();renderFinance();});
   $("#financeClearDateBtn")?.addEventListener("click",()=>{clearFinanceDate();renderFinance();});
+  $("#financeAnnualShortcut")?.addEventListener("click",openAnnualFinanceReport);
+  $("#financeAnnualShortcut")?.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openAnnualFinanceReport();}});
   $("#barberPhotoFile")?.addEventListener("change",previewBarberPhoto);
   $("#profileDate")?.addEventListener("change",()=>renderBarberProfileDay());
   $("#profileTodayBtn")?.addEventListener("click",()=>{const d=$("#profileDate"); if(d){d.value=localDateISO(); renderBarberProfileDay();}});
@@ -47,6 +72,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
   if(session){showAdmin();await renderCurrentPage();}
 });
 
+// ===== LOGIN DO PROPRIETÁRIO =====
 async function login(e){
   e.preventDefault();
   const f=new FormData(e.currentTarget);
@@ -62,6 +88,7 @@ async function login(e){
 }
 
 function showAdmin(){$("#loginOverlay")?.classList.add("hidden");}
+// ===== SAIR DO PAINEL =====
 async function logout(){await sb.auth.signOut();location.reload();}
 
 function switchPanel(id,btn){
@@ -71,6 +98,7 @@ function switchPanel(id,btn){
   btn?.classList.add("active");
 }
 
+// ===== CARREGA A PÁGINA ADMINISTRATIVA ATUAL =====
 async function renderCurrentPage(){
   const page=document.body.dataset.adminPage||"dashboard";
   if(page==="barberProfile"){
@@ -91,6 +119,7 @@ async function renderCurrentPage(){
 }
 async function renderAll(){return renderCurrentPage();}
 
+// ===== INDICADORES DA VISÃO GERAL =====
 async function renderKPIs(){
   const today=JK.todayISO(),month=today.slice(0,7);
   const {data,error}=await sb.from("bookings").select("booking_date,price,status");
@@ -112,6 +141,7 @@ async function renderKPIs(){
   if($("#kpiGallery"))$("#kpiGallery").textContent=gal.count||0;
 }
 
+// ===== LISTAGEM DOS AGENDAMENTOS =====
 async function renderBookings(){
   const root=$("#bookingRows");
   if(!root)return;
@@ -141,6 +171,7 @@ async function renderBookings(){
   </tr>`).join("");
 }
 
+// ===== ALTERA STATUS DO AGENDAMENTO =====
 async function setStatus(id,status){
   let payload={status,completed_at:status==="concluido"?new Date().toISOString():null};
   if(status==="concluido"){
@@ -168,6 +199,7 @@ async function deleteBooking(id){
   await renderAll();
 }
 
+// ===== CARDS E GESTÃO DE SERVIÇOS =====
 async function renderServicesAdmin(){
   const root=$("#serviceAdminGrid");
   if(!root)return;
@@ -285,6 +317,7 @@ async function uploadImage(file){
   return sb.storage.from("service-images").getPublicUrl(path).data.publicUrl;
 }
 
+// ===== SALVA / EDITA SERVIÇO =====
 async function saveService(e){
   e.preventDefault();
   const form=e.currentTarget;
@@ -357,6 +390,7 @@ async function removeService(id){
   await renderServicesAdmin();await renderKPIs();
 }
 
+// ===== CARDS E GESTÃO DE BARBEIROS =====
 async function renderBarbersAdmin(){
   const root=$("#barberAdminGrid");
   if(!root)return;
@@ -383,6 +417,7 @@ async function renderBarbersAdmin(){
   </div>`).join("");
 }
 
+// ===== SALVA / EDITA BARBEIRO =====
 async function saveBarber(e){
   e.preventDefault();
   const form=e.currentTarget;
@@ -738,6 +773,130 @@ function renderProfessionalPeriodReport(custom,source){
   rows.innerHTML=active.length?active.map(x=>`<tr><td><button class="finance-name-link" onclick="openBarberProfile(${x.br.id})">${x.br.photo_url?`<img src="${JK.esc(x.br.photo_url)}" alt="">`:""}<span>${JK.esc(x.br.name)}</span></button></td><td>${x.stats.cuts}</td><td>${JK.money(x.stats.gross)}</td><td>${JK.money(x.stats.commission)}</td><td>${JK.money(x.stats.net)}</td></tr>`).join(""):'<tr><td colspan="5"><div class="empty">Nenhum barbeiro com cortes concluídos neste período.</div></td></tr>';
 }
 
+
+// ===== RELATÓRIO ANUAL: 12 MESES + RANKINGS =====
+function selectedFinanceYear(){
+  return $("#financeYearFilter")?.value||localDateISO().slice(0,4);
+}
+
+function openAnnualFinanceReport(){
+  clearFinanceDate();
+  clearFinanceMonth();
+  const yearSel=$("#financeYearFilter");
+  const periodSel=$("#financePeriodFilter");
+  if(yearSel&&!yearSel.value)yearSel.value=localDateISO().slice(0,4);
+  if(periodSel)periodSel.value="year";
+  renderFinance();
+  requestAnimationFrame(()=>$("#financeAnnualDashboard")?.scrollIntoView({behavior:"smooth",block:"start"}));
+}
+
+function openAnnualMonth(monthValue){
+  clearFinanceDate();
+  const month=$("#financeMonthFilter");
+  if(month)month.value=monthValue;
+  renderFinance();
+  requestAnimationFrame(()=>$("#financeCustomTitle")?.scrollIntoView({behavior:"smooth",block:"center"}));
+}
+
+function annualBarberStats(list){
+  return barbers.map(br=>{
+    const stats=financeBarberStatsForList(list,br.id);
+    return {br,stats};
+  }).filter(x=>x.stats.cuts>0);
+}
+
+function rankingMedal(index){
+  if(index===0)return "🥇";
+  if(index===1)return "🥈";
+  if(index===2)return "🥉";
+  return String(index+1).padStart(2,"0");
+}
+
+function renderAnnualRanking(rootId,items,valueLabel,valueFn){
+  const root=$(rootId);
+  if(!root)return;
+  if(!items.length){
+    root.innerHTML='<div class="empty">Nenhum corte concluído neste ano.</div>';
+    return;
+  }
+  root.innerHTML=items.map((x,index)=>`
+    <button type="button" class="finance-ranking-row" onclick="openBarberProfile(${x.br.id})">
+      <span class="finance-ranking-position">${rankingMedal(index)}</span>
+      ${x.br.photo_url
+        ? `<img src="${JK.esc(x.br.photo_url)}" alt="Foto de ${JK.esc(x.br.name)}">`
+        : `<span class="finance-ranking-avatar">✂</span>`}
+      <span class="finance-ranking-name">
+        <strong>${JK.esc(x.br.name)}</strong>
+        <small>${x.stats.cuts} ${x.stats.cuts===1?"corte":"cortes"} · ${JK.money(x.stats.gross)}</small>
+      </span>
+      <span class="finance-ranking-value">
+        <small>${valueLabel}</small>
+        <strong>${valueFn(x)}</strong>
+      </span>
+    </button>`).join("");
+}
+
+function renderAnnualFinanceDashboard(base){
+  const dashboard=$("#financeAnnualDashboard");
+  if(!dashboard)return;
+
+  const date=getFinanceDate();
+  const month=getFinanceMonth();
+  const period=$("#financePeriodFilter")?.value||"year";
+  const year=selectedFinanceYear();
+
+  // O painel anual aparece quando não há filtro de dia/mês e o período é "Ano inteiro".
+  const visible=!date&&!month&&period==="year";
+  dashboard.hidden=!visible;
+  if(!visible)return;
+
+  const from=`${year}-01-01`,to=`${year}-12-31`;
+  const yearList=dateRangeFilter(base,from,to);
+  const total=financeStats(yearList);
+
+  $("#financeAnnualTitle").textContent=`Faturamento anual — ${year}`;
+  $("#financeAnnualGross").textContent=JK.money(total.gross);
+  $("#financeAnnualCuts").textContent=`${total.cuts} ${total.cuts===1?"corte concluído":"cortes concluídos"}`;
+
+  const root=$("#financeAnnualMonthsGrid");
+  if(root){
+    const currentMonth=localDateISO().slice(0,7);
+    const cards=[];
+    for(let m=1;m<=12;m++){
+      const key=`${year}-${String(m).padStart(2,"0")}`;
+      const list=yearList.filter(b=>completionDateISO(b).startsWith(key));
+      const st=financeStats(list);
+      const label=monthNamePt(key);
+      const best=annualBarberStats(list).sort((a,b)=>b.stats.gross-a.stats.gross||b.stats.cuts-a.stats.cuts)[0];
+      cards.push(`
+        <button type="button" class="finance-annual-month-card ${key===currentMonth?"current":""}" onclick="openAnnualMonth('${key}')">
+          <div class="finance-annual-month-top">
+            <span>${label[0].toUpperCase()+label.slice(1)}</span>
+            <small>${st.cuts} ${st.cuts===1?"corte":"cortes"}</small>
+          </div>
+          <strong class="finance-annual-month-gross">${JK.money(st.gross)}</strong>
+          <div class="finance-annual-month-metrics">
+            <span><small>Comissões</small><b>${JK.money(st.commission)}</b></span>
+            <span><small>Líquido</small><b>${JK.money(st.net)}</b></span>
+          </div>
+          <div class="finance-annual-month-best">
+            <small>${best?`Destaque: ${JK.esc(best.br.name)}`:"Sem movimento"}</small>
+            <b>Ver mês →</b>
+          </div>
+        </button>`);
+    }
+    root.innerHTML=cards.join("");
+  }
+
+  const barberAnnual=annualBarberStats(yearList);
+  const byCuts=barberAnnual.slice().sort((a,b)=>b.stats.cuts-a.stats.cuts||b.stats.gross-a.stats.gross);
+  const byGross=barberAnnual.slice().sort((a,b)=>b.stats.gross-a.stats.gross||b.stats.cuts-a.stats.cuts);
+
+  renderAnnualRanking("#financeAnnualCutsRanking",byCuts,"Cortes",x=>String(x.stats.cuts));
+  renderAnnualRanking("#financeAnnualGrossRanking",byGross,"Faturamento",x=>JK.money(x.stats.gross));
+}
+
+// ===== MOTOR PRINCIPAL DO FINANCEIRO =====
 async function renderFinance(){
   if(!$("#financeBarberCards"))return;
 
@@ -776,6 +935,7 @@ async function renderFinance(){
   renderFinanceCustom(financeStats(custom.list),custom.title);
   renderMonthWeeks(base,getFinanceMonth());
   renderProfessionalPeriodReport(custom,base);
+  renderAnnualFinanceDashboard(base);
 
   const selectedBarber=barbers.find(b=>String(b.id)===selected);
   $("#financeDetailTitle").textContent=selectedBarber
@@ -825,6 +985,7 @@ async function renderFinance(){
   }
 }
 
+// ===== GESTÃO DA GALERIA =====
 async function renderGalleryAdmin(){
   const root=$("#galleryAdminGrid"); if(!root)return;
   root.innerHTML='<div class="empty">Carregando galeria...</div>';
@@ -850,6 +1011,7 @@ async function uploadGalleryImage(file){
   return sb.storage.from("gallery-images").getPublicUrl(path).data.publicUrl;
 }
 
+// ===== SALVA FOTO NA GALERIA =====
 async function saveGalleryItem(e){
   e.preventDefault();
   const form=e.currentTarget,btn=$("#gallerySaveBtn");
@@ -892,6 +1054,7 @@ function editGalleryItem(id){
 async function toggleGalleryItem(id,active){const {error}=await sb.from("gallery").update({active}).eq("id",id);if(error)return adminToast("Erro ao alterar foto: "+error.message,true);adminToast(active?"Foto publicada.":"Foto ocultada.");await renderGalleryAdmin();await renderKPIs();}
 async function removeGalleryItem(id){if(!confirm("Excluir esta foto da galeria?"))return;const {error}=await sb.from("gallery").delete().eq("id",id);if(error)return adminToast("Erro ao excluir: "+error.message,true);adminToast("Foto excluída da galeria.");await renderGalleryAdmin();await renderKPIs();}
 
+// ===== CARREGA CONFIGURAÇÕES =====
 async function loadSettings(){
   const {data,error}=await sb.from("settings").select("*").eq("id",1).single();
   if(error){adminToast("Erro ao carregar configurações: "+error.message,true);return;}
@@ -913,6 +1076,7 @@ async function loadSettings(){
   initSettingsVisualControls();
 }
 
+// ===== SALVA CONFIGURAÇÕES DA BARBEARIA =====
 async function saveSettings(e){
   e.preventDefault();
   const form=e.currentTarget;
