@@ -64,6 +64,7 @@ async function loadBase(){
     services=s1.data||[];
     settings=s2.data||null;
     barbers=s3.data||[];
+    applySettingsToBooking();
 
     serviceSel.innerHTML=services.length
       ? '<option value="">Selecione um serviço</option>'+services.map(s=>`<option value="${s.id}">${JK.esc(s.name)} — ${JK.money(s.price)}</option>`).join("")
@@ -138,6 +139,80 @@ function validISODate(value){
   return /^\d{4}-\d{2}-\d{2}$/.test(String(value||""));
 }
 
+
+const WEEK_NAMES=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+
+function applySettingsToBooking(){
+  if(!settings)return;
+
+  const date=qs("#date");
+  const hours=qs("#bookingHoursLabel");
+  const days=qs("#bookingDaysLabel");
+  const notice=qs("#bookingNoticeBox");
+  const closed=qs("#bookingClosedBox");
+  const form=qs("#bookingForm");
+
+  const open=String(settings.open_time||"08:00").slice(0,5);
+  const close=String(settings.close_time||"19:00").slice(0,5);
+  if(hours)hours.textContent=`${open} às ${close}`;
+
+  const workDays=(settings.work_days||[]).map(Number);
+  if(days)days.textContent=workDays.map(d=>WEEK_NAMES[d]||"").filter(Boolean).join(", ")||"—";
+
+  if(date){
+    date.min=JK.todayISO();
+    const maxDays=Number(settings.booking_advance_days||60);
+    const max=new Date(JK.todayISO()+"T12:00:00");
+    max.setDate(max.getDate()+maxDays);
+    date.max=max.toISOString().slice(0,10);
+  }
+
+  const text=String(settings.booking_notice||"").trim();
+  if(notice){
+    notice.hidden=!text;
+    notice.textContent=text;
+  }
+
+  const enabled=settings.booking_enabled!==false;
+  if(closed)closed.hidden=enabled;
+  if(form){
+    form.querySelectorAll("input,select,textarea,button").forEach(el=>{
+      if(el.id!=="") el.disabled=!enabled;
+      else if(el.type==="submit") el.disabled=!enabled;
+    });
+  }
+}
+
+function validateBookingDateAgainstSettings(date){
+  if(!settings)return "";
+  if(settings.booking_enabled===false)return "O agendamento online está temporariamente desativado.";
+
+  const d=new Date(date+"T12:00:00");
+  if(Number.isNaN(d.getTime()))return "Escolha uma data válida.";
+
+  const workDays=(settings.work_days||[]).map(Number);
+  if(workDays.length&&!workDays.includes(d.getDay())){
+    return "A barbearia não atende neste dia da semana.";
+  }
+
+  const blocked=(settings.blocked_dates||[]).map(String);
+  if(blocked.includes(date)){
+    return "Esta data foi bloqueada pela barbearia. Escolha outro dia.";
+  }
+
+  const today=JK.todayISO();
+  if(date<today)return "Escolha uma data de hoje em diante.";
+
+  const maxDays=Number(settings.booking_advance_days||60);
+  const max=new Date(today+"T12:00:00");
+  max.setDate(max.getDate()+maxDays);
+  if(date>max.toISOString().slice(0,10)){
+    return `O agendamento está liberado somente para os próximos ${maxDays} dias.`;
+  }
+
+  return "";
+}
+
 async function renderTimes(){
   selectedTime="";
   renderSummary();
@@ -150,6 +225,12 @@ async function renderTimes(){
 
   if(!serviceId||!barberId||!validISODate(date)){
     root.innerHTML='<div class="empty" style="grid-column:1/-1">Escolha serviço, barbeiro e data.</div>';
+    return;
+  }
+
+  const ruleError=validateBookingDateAgainstSettings(date);
+  if(ruleError){
+    root.innerHTML=`<div class="empty booking-error" style="grid-column:1/-1">${JK.esc(ruleError)}</div>`;
     return;
   }
 
@@ -242,6 +323,7 @@ async function submitBooking(e){
   if(!serviceId)return toast("Escolha um serviço.","error");
   if(!barberId)return toast("Escolha um barbeiro.","error");
   if(!validISODate(bookingDate))return toast("Escolha a data do atendimento.","error");
+  const dateRuleError=validateBookingDateAgainstSettings(bookingDate); if(dateRuleError)return toast(dateRuleError,"error");
   if(!selectedTime)return toast("Escolha um horário disponível.","error");
 
   const btn=form.querySelector("button[type=submit]");
