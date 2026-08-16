@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Perfil do barbeiro | JK Barbearia</title><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/admin.css"><link rel="stylesheet" href="css/admin-v2.css"><link rel="stylesheet" href="css/admin-v3.css"><link rel="stylesheet" href="css/admin-v5.css"><link rel="stylesheet" href="css/admin-v6.css"><link rel="stylesheet" href="css/admin-v7.css"><link rel="stylesheet" href="css/admin-v8.css"></head><body class="admin-body admin-multipage" data-admin-page="barberProfile"><div class="admin-ambient" aria-hidden="true"></div><div id="loginOverlay" class="login-overlay"><form id="loginForm" class="login-card"><img src="assets/jk-logo.png" alt="Logo JK Barbearia"><h1>Área do proprietário</h1><p>Acesse a administração da JK Barbearia.</p><div class="field"><label>E-mail</label><input name="email" type="email" required></div><div class="field" style="margin-top:12px"><label>Senha</label><input name="password" type="password" required></div><div id="loginError" style="color:#ff9c9c;margin-top:9px"></div><button class="btn btn-primary" type="submit">Entrar</button></form></div><div class="admin-wrap"><aside class="sidebar"><a class="admin-sidebar-logo" href="admin.html"><img src="assets/jk-logo.png" alt="JK Barbearia"></a><nav class="side-nav side-nav-links"><a class="side-link " href="admin.html"><span>⌂</span>Visão geral</a><a class="side-link " href="agendamentos-admin.html"><span>▣</span>Agendamentos</a><a class="side-link " href="servicos-admin.html"><span>✂</span>Serviços</a><a class="side-link active" href="barbeiros-admin.html"><span>♙</span>Barbeiros</a><a class="side-link " href="financeiro-admin.html"><span>$</span>Financeiro</a><a class="side-link " href="galeria-admin.html"><span>▧</span>Galeria</a><a class="side-link " href="configuracoes-admin.html"><span>⚙</span>Configurações</a></nav><div class="sidebar-bottom"><a class="side-link" href="index.html"><span>↗</span>Ver site</a><button id="logout" class="side-link side-button"><span>⇥</span>Sair</button></div></aside><main class="admin-main"><div class="admin-top"><div class="admin-page-heading"><span class="eyebrow">Painel administrativo</span><h1>Perfil do barbeiro</h1></div><div class="admin-top-actions"><a class="btn btn-outline" href="index.html">Ver site</a></div></div><section id="barberProfile" class="panel active">
+  <div class="barber-profile-header card">
+    <button type="button" class="mini-btn barber-profile-back" onclick="backToBarbers()">← Voltar aos barbeiros</button>
+    <div class="barber-profile-identity">
+      <div id="profileBarberPhoto" class="profile-barber-photo"><span>✂</span></div>
+      <div>
+        <span class="eyebrow">Perfil do profissional</span>
+        <h2 id="profileBarberName">Barbeiro</h2>
+        <p id="profileBarberCommission" class="muted">Comissão: 0%</p>
+      </div>
+    </div>
+    <div class="barber-profile-date">
+      <label for="profileDate">Escolha uma data</label>
+      <input id="profileDate" type="date" aria-label="Data do perfil">
+      <button id="profileTodayBtn" type="button" class="btn btn-outline">Hoje</button>
+    </div>
+  </div>
+
+  <div class="profile-kpis">
+    <article class="kpi"><span>Cortes na data</span><strong id="profileCuts">0</strong></article>
+    <article class="kpi"><span>Faturamento do barbeiro</span><strong id="profileGross">R$ 0,00</strong></article>
+    <article class="kpi"><span>Comissão a receber</span><strong id="profileCommission">R$ 0,00</strong></article>
+    <article class="kpi"><span>Líquido da barbearia</span><strong id="profileNet">R$ 0,00</strong></article>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h2 id="profileDayTitle">Cortes do dia</h2>
+        <p class="muted">Somente cortes marcados como concluídos entram neste relatório.</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Horário</th><th>Cliente</th><th>Serviço</th><th>Valor</th><th>%</th><th>Comissão</th><th>Casa</th></tr></thead>
+        <tbody id="profileDayRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="barber-profile-periods">
+    <div class="card">
+      <h3>Resumo do mês</h3>
+      <div class="profile-summary-grid">
+        <div><span>Cortes</span><b id="profileMonthCuts">0</b></div>
+        <div><span>Faturado</span><b id="profileMonthGross">R$ 0,00</b></div>
+        <div><span>Comissão</span><b id="profileMonthCommission">R$ 0,00</b></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Resumo do ano</h3>
+      <div class="profile-summary-grid">
+        <div><span>Cortes</span><b id="profileYearCuts">0</b></div>
+        <div><span>Faturado</span><b id="profileYearGross">R$ 0,00</b></div>
+        <div><span>Comissão</span><b id="profileYearCommission">R$ 0,00</b></div>
+      </div>
+    </div>
+  </div>
+</section></main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/admin.js"></script></body></html>
