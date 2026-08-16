@@ -145,14 +145,14 @@ async function renderKPIs(){
 async function renderBookings(){
   const root=$("#bookingRows");
   if(!root)return;
-  root.innerHTML='<tr><td colspan="8">Carregando...</td></tr>';
+  root.innerHTML='<tr><td colspan="9">Carregando...</td></tr>';
 
   const {data,error}=await sb.from("bookings").select("*")
     .order("booking_date",{ascending:false})
     .order("booking_time",{ascending:false});
 
-  if(error){root.innerHTML='<tr><td colspan="8">Erro ao carregar.</td></tr>';return;}
-  if(!data?.length){root.innerHTML='<tr><td colspan="8"><div class="empty">Nenhum agendamento ainda.</div></td></tr>';return;}
+  if(error){root.innerHTML='<tr><td colspan="9">Erro ao carregar.</td></tr>';return;}
+  if(!data?.length){root.innerHTML='<tr><td colspan="9"><div class="empty">Nenhum agendamento ainda.</div></td></tr>';return;}
 
   root.innerHTML=data.map(b=>`<tr>
     <td><strong>${JK.esc(b.client_name)}</strong><br><span class="muted">${JK.esc(b.phone)}</span></td>
@@ -160,6 +160,13 @@ async function renderBookings(){
     <td>${JK.esc(b.service_name)}</td>
     <td>${new Date(b.booking_date+"T12:00:00").toLocaleDateString("pt-BR")}<br>${String(b.booking_time).slice(0,5)}</td>
     <td>${JK.money(b.price)}${b.status==="concluido"&&b.barber_id?`<br><span class="muted">Comissão: ${JK.money(commissionForBooking(b))}</span>`:""}</td>
+    <td>
+      <select class="payment-admin-select ${paymentMethodClass(b.payment_method)}" onchange="updateBookingPayment(${b.id},this.value,this)">
+        <option value="pix" ${paymentMethodClass(b.payment_method)==="pix"?"selected":""}>Pix</option>
+        <option value="cartao" ${paymentMethodClass(b.payment_method)==="cartao"?"selected":""}>Cartão</option>
+        <option value="dinheiro" ${paymentMethodClass(b.payment_method)==="dinheiro"?"selected":""}>Dinheiro</option>
+      </select>
+    </td>
     <td><span class="status ${b.status}">${b.status}</span></td>
     <td>${JK.esc(b.notes||"—")}</td>
     <td><div class="action-row">
@@ -172,6 +179,18 @@ async function renderBookings(){
 }
 
 // ===== ALTERA STATUS DO AGENDAMENTO =====
+async function updateBookingPayment(id,method,selectEl){
+  const value=paymentMethodClass(method);
+  const {error}=await sb.from("bookings").update({payment_method:value}).eq("id",id);
+  if(error){
+    adminToast("Erro ao alterar forma de pagamento: "+error.message,true);
+    await renderBookings();
+    return;
+  }
+  if(selectEl)selectEl.className=`payment-admin-select ${value}`;
+  adminToast(`Pagamento alterado para ${paymentMethodLabel(value)}.`);
+}
+
 async function setStatus(id,status){
   let payload={status,completed_at:status==="concluido"?new Date().toISOString():null};
   if(status==="concluido"){
@@ -574,10 +593,38 @@ function percentForBooking(b){
   if(b.barber_commission_percent!==null&&b.barber_commission_percent!==undefined)return Number(b.barber_commission_percent||0);
   return Number(barbers.find(x=>Number(x.id)===Number(b.barber_id))?.commission_percent||0);
 }
+// ===== FORMAS DE PAGAMENTO =====
+function paymentMethodLabel(value){
+  const map={pix:"Pix",cartao:"Cartão",dinheiro:"Dinheiro"};
+  return map[String(value||"dinheiro").toLowerCase()]||"Dinheiro";
+}
+function paymentMethodClass(value){
+  const v=String(value||"dinheiro").toLowerCase();
+  return ["pix","cartao","dinheiro"].includes(v)?v:"dinheiro";
+}
+function paymentBreakdown(list){
+  const result={
+    pix:{cuts:0,total:0},
+    cartao:{cuts:0,total:0},
+    dinheiro:{cuts:0,total:0}
+  };
+  list.forEach(b=>{
+    const method=paymentMethodClass(b.payment_method);
+    result[method].cuts++;
+    result[method].total+=Number(b.price||0);
+  });
+  return result;
+}
+function paymentBadge(value){
+  const method=paymentMethodClass(value);
+  return `<span class="payment-badge ${method}">${paymentMethodLabel(method)}</span>`;
+}
+
 function financeStats(list){
   const gross=list.reduce((a,b)=>a+Number(b.price||0),0);
   const commission=list.reduce((a,b)=>a+commissionForBooking(b),0);
-  return {cuts:list.length,gross,commission,net:gross-commission};
+  const payments=paymentBreakdown(list);
+  return {cuts:list.length,gross,commission,net:gross-commission,payments};
 }
 function setFinancePeriod(prefix,stats){
   const cap=prefix[0].toUpperCase()+prefix.slice(1);
@@ -605,7 +652,7 @@ function openBarberProfile(id){location.href=`barbeiro-perfil.html?id=${encodeUR
 async function loadProfileBookings(){
   if(!currentProfileBarberId)return [];
   const {data,error}=await sb.from("bookings")
-    .select("id,client_name,booking_date,booking_time,completed_at,service_name,price,status,barber_id,barber_name,barber_commission_percent,barber_commission_amount")
+    .select("id,client_name,booking_date,booking_time,completed_at,service_name,price,status,barber_id,barber_name,barber_commission_percent,barber_commission_amount,payment_method")
     .eq("barber_id",currentProfileBarberId)
     .eq("status","concluido")
     .order("completed_at",{ascending:false});
@@ -624,18 +671,25 @@ async function renderBarberProfileDay(){
   $("#profileGross").textContent=JK.money(dayStats.gross);
   $("#profileCommission").textContent=JK.money(dayStats.commission);
   $("#profileNet").textContent=JK.money(dayStats.net);
+  const dayPay=dayStats.payments;
+  $("#profileDayPix").textContent=JK.money(dayPay.pix.total);
+  $("#profileDayPixCuts").textContent=`${dayPay.pix.cuts} ${dayPay.pix.cuts===1?"corte":"cortes"}`;
+  $("#profileDayCartao").textContent=JK.money(dayPay.cartao.total);
+  $("#profileDayCartaoCuts").textContent=`${dayPay.cartao.cuts} ${dayPay.cartao.cuts===1?"corte":"cortes"}`;
+  $("#profileDayDinheiro").textContent=JK.money(dayPay.dinheiro.total);
+  $("#profileDayDinheiroCuts").textContent=`${dayPay.dinheiro.cuts} ${dayPay.dinheiro.cuts===1?"corte":"cortes"}`;
   $("#profileDayTitle").textContent=`Cortes de ${new Date(selectedDate+"T12:00:00").toLocaleDateString("pt-BR")}`;
 
   const rows=$("#profileDayRows");
   if(!dayList.length){
-    rows.innerHTML='<tr><td colspan="7"><div class="empty">Nenhum corte concluído por este barbeiro nesta data.</div></td></tr>';
+    rows.innerHTML='<tr><td colspan="8"><div class="empty">Nenhum corte concluído por este barbeiro nesta data.</div></td></tr>';
   }else{
     rows.innerHTML=dayList.map(b=>{
       const price=Number(b.price||0),commission=commissionForBooking(b),pct=percentForBooking(b);
       const time=b.completed_at
         ? new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(b.completed_at))
         : String(b.booking_time||"").slice(0,5);
-      return `<tr><td>${time}</td><td>${JK.esc(b.client_name||"—")}</td><td>${JK.esc(b.service_name||"—")}</td><td>${JK.money(price)}</td><td>${pct.toLocaleString("pt-BR",{maximumFractionDigits:2})}%</td><td><strong>${JK.money(commission)}</strong></td><td>${JK.money(price-commission)}</td></tr>`;
+      return `<tr><td>${time}</td><td>${JK.esc(b.client_name||"—")}</td><td>${JK.esc(b.service_name||"—")}</td><td>${paymentBadge(b.payment_method)}</td><td>${JK.money(price)}</td><td>${pct.toLocaleString("pt-BR",{maximumFractionDigits:2})}%</td><td><strong>${JK.money(commission)}</strong></td><td>${JK.money(price-commission)}</td></tr>`;
     }).join("");
   }
 
@@ -650,6 +704,12 @@ async function renderBarberProfileDay(){
   $("#profileYearCuts").textContent=yearStats.cuts;
   $("#profileYearGross").textContent=JK.money(yearStats.gross);
   $("#profileYearCommission").textContent=JK.money(yearStats.commission);
+  $("#profileMonthPix").textContent=JK.money(monthStats.payments.pix.total);
+  $("#profileMonthCartao").textContent=JK.money(monthStats.payments.cartao.total);
+  $("#profileMonthDinheiro").textContent=JK.money(monthStats.payments.dinheiro.total);
+  $("#profileYearPix").textContent=JK.money(yearStats.payments.pix.total);
+  $("#profileYearCartao").textContent=JK.money(yearStats.payments.cartao.total);
+  $("#profileYearDinheiro").textContent=JK.money(yearStats.payments.dinheiro.total);
 }
 
 
@@ -705,6 +765,14 @@ function renderFinanceCustom(stats,title){
   $("#financeCustomGross").textContent=JK.money(stats.gross);
   $("#financeCustomCommission").textContent=JK.money(stats.commission);
   $("#financeCustomNet").textContent=JK.money(stats.net);
+
+  const pay=stats.payments||paymentBreakdown([]);
+  if($("#financeCustomPix"))$("#financeCustomPix").textContent=JK.money(pay.pix.total);
+  if($("#financeCustomPixCuts"))$("#financeCustomPixCuts").textContent=`${pay.pix.cuts} ${pay.pix.cuts===1?"corte":"cortes"}`;
+  if($("#financeCustomCartao"))$("#financeCustomCartao").textContent=JK.money(pay.cartao.total);
+  if($("#financeCustomCartaoCuts"))$("#financeCustomCartaoCuts").textContent=`${pay.cartao.cuts} ${pay.cartao.cuts===1?"corte":"cortes"}`;
+  if($("#financeCustomDinheiro"))$("#financeCustomDinheiro").textContent=JK.money(pay.dinheiro.total);
+  if($("#financeCustomDinheiroCuts"))$("#financeCustomDinheiroCuts").textContent=`${pay.dinheiro.cuts} ${pay.dinheiro.cuts===1?"corte":"cortes"}`;
 }
 function mondayOfDateISO(dateISO){
   const [y,m,d]=dateISO.split("-").map(Number);
@@ -857,6 +925,12 @@ function renderAnnualFinanceDashboard(base){
   $("#financeAnnualTitle").textContent=`Faturamento anual — ${year}`;
   $("#financeAnnualGross").textContent=JK.money(total.gross);
   $("#financeAnnualCuts").textContent=`${total.cuts} ${total.cuts===1?"corte concluído":"cortes concluídos"}`;
+  if($("#financeAnnualPix"))$("#financeAnnualPix").textContent=JK.money(total.payments.pix.total);
+  if($("#financeAnnualPixCuts"))$("#financeAnnualPixCuts").textContent=`${total.payments.pix.cuts} ${total.payments.pix.cuts===1?"corte":"cortes"}`;
+  if($("#financeAnnualCartao"))$("#financeAnnualCartao").textContent=JK.money(total.payments.cartao.total);
+  if($("#financeAnnualCartaoCuts"))$("#financeAnnualCartaoCuts").textContent=`${total.payments.cartao.cuts} ${total.payments.cartao.cuts===1?"corte":"cortes"}`;
+  if($("#financeAnnualDinheiro"))$("#financeAnnualDinheiro").textContent=JK.money(total.payments.dinheiro.total);
+  if($("#financeAnnualDinheiroCuts"))$("#financeAnnualDinheiroCuts").textContent=`${total.payments.dinheiro.cuts} ${total.payments.dinheiro.cuts===1?"corte":"cortes"}`;
 
   const root=$("#financeAnnualMonthsGrid");
   if(root){
@@ -878,6 +952,11 @@ function renderAnnualFinanceDashboard(base){
           <div class="finance-annual-month-metrics">
             <span><small>Comissões</small><b>${JK.money(st.commission)}</b></span>
             <span><small>Líquido</small><b>${JK.money(st.net)}</b></span>
+          </div>
+          <div class="annual-month-payments">
+            <span>Pix <b>${JK.money(st.payments.pix.total)}</b></span>
+            <span>Cartão <b>${JK.money(st.payments.cartao.total)}</b></span>
+            <span>Dinheiro <b>${JK.money(st.payments.dinheiro.total)}</b></span>
           </div>
           <div class="finance-annual-month-best">
             <small>${best?`Destaque: ${JK.esc(best.br.name)}`:"Sem movimento"}</small>
@@ -910,7 +989,7 @@ async function renderFinance(){
   if(queryBarber&&$("#financeBarberSelect"))$("#financeBarberSelect").value=queryBarber;
 
   const {data,error}=await sb.from("bookings")
-    .select("id,client_name,booking_date,booking_time,completed_at,service_name,price,status,barber_id,barber_name,barber_commission_percent,barber_commission_amount")
+    .select("id,client_name,booking_date,booking_time,completed_at,service_name,price,status,barber_id,barber_name,barber_commission_percent,barber_commission_amount,payment_method")
     .eq("status","concluido")
     .order("completed_at",{ascending:false});
   if(error){
@@ -959,6 +1038,11 @@ async function renderFinance(){
           <div><span>Faturou</span><b>${JK.money(st.gross)}</b></div>
           <div><span>Recebe</span><b>${JK.money(st.commission)}</b></div>
         </div>
+        <div class="finance-barber-payments">
+          <span>Pix <b>${JK.money(st.payments.pix.total)}</b></span>
+          <span>Cartão <b>${JK.money(st.payments.cartao.total)}</b></span>
+          <span>Dinheiro <b>${JK.money(st.payments.dinheiro.total)}</b></span>
+        </div>
         <span class="finance-open-profile">Abrir perfil individual →</span>
       </button>`;
     }).join("");
@@ -968,7 +1052,7 @@ async function renderFinance(){
   const rows=$("#financeRows");
   const rowList=custom.list.slice().sort((a,b)=>String(b.completed_at||b.booking_date).localeCompare(String(a.completed_at||a.booking_date))).slice(0,150);
   if(!rowList.length){
-    rows.innerHTML='<tr><td colspan="7"><div class="empty">Nenhum corte concluído neste período.</div></td></tr>';
+    rows.innerHTML='<tr><td colspan="8"><div class="empty">Nenhum corte concluído neste período.</div></td></tr>';
   }else{
     rows.innerHTML=rowList.map(b=>{
       const commission=commissionForBooking(b),price=Number(b.price||0),pct=percentForBooking(b);
@@ -976,6 +1060,7 @@ async function renderFinance(){
         <td>${completionDateTimeLabel(b)}</td>
         <td><strong>${JK.esc(b.barber_name||"—")}</strong></td>
         <td>${JK.esc(b.service_name||"—")}</td>
+        <td>${paymentBadge(b.payment_method)}</td>
         <td>${JK.money(price)}</td>
         <td>${pct.toLocaleString("pt-BR",{maximumFractionDigits:2})}%</td>
         <td><strong>${JK.money(commission)}</strong></td>
