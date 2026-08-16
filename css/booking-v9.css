@@ -64,3 +64,12 @@
   .booking-barber-cards{grid-template-columns:1fr}
   .booking-barber-info strong{white-space:normal}
 }
+
+.booking-settings-info{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0}
+.booking-settings-info>div{display:grid;gap:4px;padding:10px 11px;border-radius:12px;border:1px solid rgba(255,255,255,.065);background:rgba(255,255,255,.025)}
+.booking-settings-info span{font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;color:#808891;font-weight:800}
+.booking-settings-info strong{font-size:.78rem;color:#eee9df}
+.booking-client-notice{margin:12px 0;padding:12px 13px;border-radius:12px;border:1px solid rgba(214,168,79,.18);background:rgba(214,168,79,.055);color:#d9cfb7;font-size:.79rem;line-height:1.5}
+.booking-closed-box{display:grid;gap:5px;margin:14px 0;padding:14px;border-radius:13px;border:1px solid rgba(226,85,85,.18);background:rgba(226,85,85,.055);color:#f0b8b8}
+.booking-closed-box span{font-size:.75rem;color:#bd9b9b}
+@media(max-width:520px){.booking-settings-info{grid-template-columns:1fr}}
