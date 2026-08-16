@@ -1,0 +1,66 @@
+
+/* JK Barbearia — Agendamento V9 */
+.booking-date-shell{display:grid;gap:7px}
+.booking-date-shell input[type="date"]{
+  width:100%;
+  min-height:52px;
+  border:1px solid rgba(214,168,79,.28)!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025))!important;
+  color:#f7f1e4!important;
+  border-radius:13px!important;
+  padding:0 14px!important;
+  font-size:1rem;
+  font-weight:750;
+  color-scheme:dark;
+}
+.booking-date-shell input[type="date"]:focus{
+  border-color:rgba(240,200,90,.82)!important;
+  box-shadow:0 0 0 3px rgba(214,168,79,.13)!important;
+}
+.booking-date-shell input[type="date"]::-webkit-calendar-picker-indicator{
+  opacity:1;
+  cursor:pointer;
+  padding:7px;
+  border-radius:8px;
+  background-color:rgba(214,168,79,.10);
+  filter:invert(88%) sepia(19%) saturate(1105%) hue-rotate(352deg) brightness(101%) contrast(93%);
+}
+.booking-date-hint{font-size:.72rem;color:#8e959d}
+.booking-barber-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.booking-barber-card{
+  position:relative;
+  display:grid!important;
+  grid-template-columns:56px minmax(0,1fr) 28px;
+  align-items:center;
+  gap:11px;
+  min-height:78px;
+  padding:10px 12px!important;
+  text-align:left!important;
+}
+.booking-barber-card img,.booking-barber-placeholder{
+  width:56px!important;height:56px!important;min-width:56px!important;
+  border-radius:50%!important;object-fit:cover!important;
+}
+.booking-barber-info{display:grid;min-width:0;gap:4px}
+.booking-barber-info strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.booking-barber-info small{color:#9299a1;font-size:.72rem}
+.booking-barber-check{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  opacity:.25;border:1px solid rgba(255,255,255,.12);transition:.2s ease
+}
+.booking-barber-card.active .booking-barber-check{
+  opacity:1;background:#d6a84f;color:#17100a;border-color:#d6a84f;font-weight:900
+}
+.booking-loading{color:#d7c38e!important}
+.booking-error{color:#ffaaaa!important;border-color:rgba(226,85,85,.18)!important}
+.time-btn{min-height:46px!important}
+.time-btn.active{
+  background:linear-gradient(135deg,#f1d68c,#c2913e)!important;
+  color:#17100a!important;
+  border-color:#d6a84f!important;
+  box-shadow:0 9px 24px rgba(214,168,79,.16)
+}
+@media(max-width:620px){
+  .booking-barber-cards{grid-template-columns:1fr}
+  .booking-barber-info strong{white-space:normal}
+}
