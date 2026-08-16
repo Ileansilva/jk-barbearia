@@ -894,8 +894,23 @@ async function removeGalleryItem(id){if(!confirm("Excluir esta foto da galeria?"
 
 async function loadSettings(){
   const {data,error}=await sb.from("settings").select("*").eq("id",1).single();
-  if(error)return console.error(error);
-  $("#businessName").value=data.business_name||"";$("#phone").value=data.phone||"";$("#instagram").value=data.instagram||"";$("#address").value=data.address||"";$("#openTime").value=String(data.open_time||"08:00").slice(0,5);$("#closeTime").value=String(data.close_time||"19:00").slice(0,5);$("#interval").value=data.slot_interval_minutes||30;$("#workDays").value=(data.work_days||[]).join(",");$("#blockedDates").value=(data.blocked_dates||[]).join(",");
+  if(error){adminToast("Erro ao carregar configurações: "+error.message,true);return;}
+
+  if($("#businessName"))$("#businessName").value=data.business_name||"";
+  if($("#phone"))$("#phone").value=data.phone||"";
+  if($("#instagram"))$("#instagram").value=data.instagram||"";
+  if($("#address"))$("#address").value=data.address||"";
+  if($("#openTime"))$("#openTime").value=String(data.open_time||"08:00").slice(0,5);
+  if($("#closeTime"))$("#closeTime").value=String(data.close_time||"19:00").slice(0,5);
+  if($("#interval"))$("#interval").value=String(data.slot_interval_minutes||30);
+  if($("#workDays"))$("#workDays").value=(data.work_days||[]).join(",");
+  if($("#blockedDates"))$("#blockedDates").value=(data.blocked_dates||[]).join(",");
+  if($("#bookingEnabled"))$("#bookingEnabled").checked=data.booking_enabled!==false;
+  if($("#bookingAdvanceDays"))$("#bookingAdvanceDays").value=Number(data.booking_advance_days||60);
+  if($("#bookingMinNotice"))$("#bookingMinNotice").value=String(data.booking_min_notice_minutes||0);
+  if($("#bookingNotice"))$("#bookingNotice").value=data.booking_notice||"";
+
+  initSettingsVisualControls();
 }
 
 async function saveSettings(e){
@@ -904,12 +919,120 @@ async function saveSettings(e){
   const btn=form.querySelector('button[type="submit"]');
   const original=btn?.textContent||"Salvar configurações";
   if(btn){btn.disabled=true;btn.textContent="Salvando...";}
+
   try{
+    syncWorkDaysInput();
+    syncBlockedDatesInput();
+
     const f=new FormData(form);
-    const payload={business_name:String(f.get("businessName")||"").trim(),phone:String(f.get("phone")||"").trim(),instagram:String(f.get("instagram")||"").trim(),address:String(f.get("address")||"").trim(),open_time:f.get("openTime"),close_time:f.get("closeTime"),slot_interval_minutes:Number(f.get("interval")),work_days:String(f.get("workDays")||"").split(",").map(x=>Number(x.trim())).filter(x=>x>=0&&x<=6),blocked_dates:String(f.get("blockedDates")||"").split(",").map(x=>x.trim()).filter(Boolean)};
+    const openTime=String(f.get("openTime")||"");
+    const closeTime=String(f.get("closeTime")||"");
+    const interval=Number(f.get("interval")||30);
+    const workDays=String(f.get("workDays")||"").split(",").map(x=>Number(x.trim())).filter(x=>x>=0&&x<=6);
+    const blockedDates=String(f.get("blockedDates")||"").split(",").map(x=>x.trim()).filter(Boolean);
+
+    if(!openTime||!closeTime)throw new Error("Informe o horário de abertura e fechamento.");
+    if(openTime>=closeTime)throw new Error("O horário de fechamento deve ser depois da abertura.");
+    if(!workDays.length)throw new Error("Selecione pelo menos um dia de funcionamento.");
+    if(interval<5)throw new Error("O intervalo entre horários é inválido.");
+
+    const payload={
+      business_name:String(f.get("businessName")||"").trim(),
+      phone:String(f.get("phone")||"").trim(),
+      instagram:String(f.get("instagram")||"").trim(),
+      address:String(f.get("address")||"").trim(),
+      open_time:openTime,
+      close_time:closeTime,
+      slot_interval_minutes:interval,
+      work_days:workDays,
+      blocked_dates:blockedDates,
+      booking_enabled:$("#bookingEnabled")?.checked!==false,
+      booking_advance_days:Math.max(1,Math.min(365,Number(f.get("bookingAdvanceDays")||60))),
+      booking_min_notice_minutes:Math.max(0,Number(f.get("bookingMinNotice")||0)),
+      booking_notice:String(f.get("bookingNotice")||"").trim()
+    };
+
     const {error}=await sb.from("settings").update(payload).eq("id",1);
     if(error)throw error;
-    adminToast("Configurações salvas com sucesso.");
-  }catch(err){adminToast("Erro ao salvar configurações: "+(err?.message||"erro desconhecido"),true);}
-  finally{if(btn){btn.disabled=false;btn.textContent=original;}}
+
+    adminToast("Configurações salvas. A agenda dos clientes já está usando as novas regras.");
+    await loadSettings();
+  }catch(err){
+    adminToast("Erro ao salvar configurações: "+(err?.message||"erro desconhecido"),true);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=original;}
+  }
+}
+
+function initSettingsVisualControls(){
+  const workInput=$("#workDays");
+  const selected=new Set(String(workInput?.value||"").split(",").filter(Boolean));
+  document.querySelectorAll("#workDaysPicker [data-day]").forEach(btn=>{
+    btn.classList.toggle("active",selected.has(btn.dataset.day));
+    if(!btn.dataset.bound){
+      btn.dataset.bound="1";
+      btn.addEventListener("click",()=>{
+        btn.classList.toggle("active");
+        syncWorkDaysInput();
+      });
+    }
+  });
+
+  renderBlockedDateChips();
+
+  const addBtn=$("#addBlockedDateBtn");
+  if(addBtn&&!addBtn.dataset.bound){
+    addBtn.dataset.bound="1";
+    addBtn.addEventListener("click",()=>{
+      const input=$("#blockedDateInput");
+      const value=input?.value||"";
+      if(!value)return adminToast("Escolha uma data para bloquear.",true);
+      const current=getBlockedDates();
+      if(!current.includes(value))current.push(value);
+      current.sort();
+      $("#blockedDates").value=current.join(",");
+      if(input)input.value="";
+      renderBlockedDateChips();
+    });
+  }
+}
+
+function syncWorkDaysInput(){
+  const input=$("#workDays");
+  if(!input)return;
+  input.value=[...document.querySelectorAll("#workDaysPicker [data-day].active")]
+    .map(btn=>Number(btn.dataset.day))
+    .sort((a,b)=>a-b)
+    .join(",");
+}
+
+function getBlockedDates(){
+  return String($("#blockedDates")?.value||"").split(",").map(x=>x.trim()).filter(Boolean);
+}
+
+function syncBlockedDatesInput(){
+  const input=$("#blockedDates");
+  if(input)input.value=[...new Set(getBlockedDates())].sort().join(",");
+}
+
+function removeBlockedDate(value){
+  const dates=getBlockedDates().filter(x=>x!==value);
+  $("#blockedDates").value=dates.join(",");
+  renderBlockedDateChips();
+}
+
+function renderBlockedDateChips(){
+  const root=$("#blockedDateChips");
+  if(!root)return;
+  const dates=getBlockedDates();
+  if(!dates.length){
+    root.innerHTML='<span class="muted">Nenhuma data bloqueada.</span>';
+    return;
+  }
+  root.innerHTML=dates.map(d=>`<button type="button" class="blocked-date-chip" data-date="${d}">
+    <span>${new Date(d+"T12:00:00").toLocaleDateString("pt-BR")}</span><b>×</b>
+  </button>`).join("");
+  root.querySelectorAll(".blocked-date-chip").forEach(btn=>{
+    btn.addEventListener("click",()=>removeBlockedDate(btn.dataset.date));
+  });
 }
