@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   document.querySelector("#bookingForm").addEventListener("submit",submitBooking);
   date.addEventListener("change",renderTimes);
   document.querySelector("#service").addEventListener("change",()=>{selectedTime="";renderSummary();renderTimes();});
-  document.querySelector("#barber").addEventListener("change",()=>{selectedTime="";renderSummary();renderTimes();});
+  document.querySelector("#barber").addEventListener("change",()=>{selectedTime="";syncBookingBarberCards();renderSummary();renderTimes();});
   await loadBase();
 });
 
@@ -32,10 +32,32 @@ async function loadBase(){
   barberSel.innerHTML=barbers.length
     ? '<option value="">Selecione um barbeiro</option>'+barbers.map(b=>`<option value="${b.id}">${JK.esc(b.name)}</option>`).join("")
     : '<option value="">Nenhum barbeiro disponível</option>';
+  renderBookingBarberCards();
 
   const pre=new URLSearchParams(location.search).get("service");
   if(pre)serviceSel.value=pre;
   renderSummary();
+}
+
+
+function renderBookingBarberCards(){
+  const root=document.querySelector("#bookingBarberCards"); if(!root)return;
+  if(!barbers.length){root.innerHTML='<div class="empty">Nenhum barbeiro disponível.</div>';return;}
+  root.innerHTML=barbers.map(b=>`<button type="button" class="booking-barber-card" data-barber-id="${b.id}" onclick="selectBookingBarber(${b.id})">
+    ${b.photo_url?`<img src="${JK.esc(b.photo_url)}" alt="Foto de ${JK.esc(b.name)}">`:`<span class="booking-barber-placeholder">✂</span>`}
+    <strong>${JK.esc(b.name)}</strong>
+    <small>Selecionar</small>
+  </button>`).join("");
+  syncBookingBarberCards();
+}
+function selectBookingBarber(id){
+  const sel=document.querySelector("#barber");
+  sel.value=String(id);
+  sel.dispatchEvent(new Event("change",{bubbles:true}));
+}
+function syncBookingBarberCards(){
+  const selected=document.querySelector("#barber")?.value||"";
+  document.querySelectorAll(".booking-barber-card").forEach(card=>card.classList.toggle("active",card.dataset.barberId===selected));
 }
 
 async function renderTimes(){
