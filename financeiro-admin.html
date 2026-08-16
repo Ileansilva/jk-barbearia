@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="pt-BR"><head>
-<!-- ===== CABEÇALHO / CONFIGURAÇÕES DA PÁGINA ===== --><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Financeiro | JK Barbearia</title><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/admin.css"><link rel="stylesheet" href="css/admin-v2.css"><link rel="stylesheet" href="css/admin-v3.css"><link rel="stylesheet" href="css/admin-v5.css"><link rel="stylesheet" href="css/admin-v6.css"><link rel="stylesheet" href="css/admin-v7.css"><link rel="stylesheet" href="css/admin-v8.css"><link rel="stylesheet" href="css/finance-annual-v13.css"></head><body class="admin-body admin-multipage" data-admin-page="finance">
+<!-- ===== CABEÇALHO / CONFIGURAÇÕES DA PÁGINA ===== --><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Financeiro | JK Barbearia</title><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/admin.css"><link rel="stylesheet" href="css/admin-v2.css"><link rel="stylesheet" href="css/admin-v3.css"><link rel="stylesheet" href="css/admin-v5.css"><link rel="stylesheet" href="css/admin-v6.css"><link rel="stylesheet" href="css/admin-v7.css"><link rel="stylesheet" href="css/admin-v8.css"><link rel="stylesheet" href="css/finance-annual-v13.css"><link rel="stylesheet" href="css/payment-v14.css"></head><body class="admin-body admin-multipage" data-admin-page="finance">
 <!-- ===== INÍCIO DO CONTEÚDO VISÍVEL ===== --><div class="admin-ambient" aria-hidden="true"></div><!-- ===== LOGIN DO PROPRIETÁRIO ===== -->
 <div id="loginOverlay" class="login-overlay"><form id="loginForm" class="login-card"><img src="assets/jk-logo.png" alt="Logo JK Barbearia"><h1>Área do proprietário</h1><p>Acesse a administração da JK Barbearia.</p><div class="field"><label>E-mail</label><input name="email" type="email" required></div><div class="field" style="margin-top:12px"><label>Senha</label><input name="password" type="password" required></div><div id="loginError" style="color:#ff9c9c;margin-top:9px"></div><button class="btn btn-primary" type="submit">Entrar</button></form></div><!-- ===== ESTRUTURA PRINCIPAL DO PAINEL ADMIN ===== -->
 <div class="admin-wrap"><!-- ===== MENU LATERAL DO ADMINISTRADOR ===== -->
@@ -116,6 +116,12 @@
       <div><span>Comissões</span><strong id="financeCustomCommission">R$ 0,00</strong></div>
       <div><span>Lucro/Líquido da casa</span><strong id="financeCustomNet">R$ 0,00</strong></div>
     </div>
+    <!-- ===== RECEBIMENTOS POR FORMA DE PAGAMENTO ===== -->
+    <div class="finance-payment-summary">
+      <div class="payment-summary-card pix"><span>Pix</span><strong id="financeCustomPix">R$ 0,00</strong><small id="financeCustomPixCuts">0 cortes</small></div>
+      <div class="payment-summary-card card"><span>Cartão</span><strong id="financeCustomCartao">R$ 0,00</strong><small id="financeCustomCartaoCuts">0 cortes</small></div>
+      <div class="payment-summary-card cash"><span>Dinheiro</span><strong id="financeCustomDinheiro">R$ 0,00</strong><small id="financeCustomDinheiroCuts">0 cortes</small></div>
+    </div>
   </div>
 
   <div id="financeWeeksCard" class="card">
@@ -148,7 +154,7 @@
     <div class="table-wrap">
       <table class="table finance-table">
         <thead>
-          <tr><th>Data</th><th>Barbeiro</th><th>Serviço</th><th>Valor</th><th>%</th><th>Comissão</th><th>Casa</th></tr>
+          <tr><th>Data</th><th>Barbeiro</th><th>Serviço</th><th>Pagamento</th><th>Valor</th><th>%</th><th>Comissão</th><th>Casa</th></tr>
         </thead>
         <tbody id="financeRows"></tbody>
       </table>
@@ -168,6 +174,15 @@
       <span>Faturamento do ano</span>
       <strong id="financeAnnualGross">R$ 0,00</strong>
       <small id="financeAnnualCuts">0 cortes concluídos</small>
+    </div>
+  </div>
+
+  <div class="card finance-annual-payments-card">
+    <div class="card-head"><div><span class="eyebrow">Recebimentos do ano</span><h2>Formas de pagamento</h2><p class="muted">Somente cortes concluídos entram nestes totais.</p></div></div>
+    <div class="finance-payment-summary">
+      <div class="payment-summary-card pix"><span>Pix</span><strong id="financeAnnualPix">R$ 0,00</strong><small id="financeAnnualPixCuts">0 cortes</small></div>
+      <div class="payment-summary-card card"><span>Cartão</span><strong id="financeAnnualCartao">R$ 0,00</strong><small id="financeAnnualCartaoCuts">0 cortes</small></div>
+      <div class="payment-summary-card cash"><span>Dinheiro</span><strong id="financeAnnualDinheiro">R$ 0,00</strong><small id="financeAnnualDinheiroCuts">0 cortes</small></div>
     </div>
   </div>
 
