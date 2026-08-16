@@ -1,0 +1,57 @@
+/*
+==========================================================
+JK BARBEARIA - FORMAS DE PAGAMENTO V14
+==========================================================
+Controla a aparência de Pix, Cartão e Dinheiro no:
+- agendamento do cliente;
+- agendamentos do proprietário;
+- financeiro;
+- perfil individual dos barbeiros.
+==========================================================
+*/
+
+/* ===== ESCOLHA DO CLIENTE ===== */
+.payment-method-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.payment-method-card{position:relative;display:grid;grid-template-columns:42px minmax(0,1fr) 24px;align-items:center;gap:10px;min-height:76px;padding:12px;border:1px solid rgba(255,255,255,.075);border-radius:14px;background:rgba(255,255,255,.025);cursor:pointer;transition:.2s ease}
+.payment-method-card input{position:absolute;opacity:0;pointer-events:none}
+.payment-method-card>span:nth-of-type(2){display:grid;gap:3px;min-width:0}
+.payment-method-card strong{font-size:.86rem}
+.payment-method-card small{font-size:.65rem;color:#858d95}
+.payment-method-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;border:1px solid rgba(214,168,79,.13);background:rgba(214,168,79,.05);color:#d9bd74;font-weight:900}
+.payment-method-card i{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,.10);color:transparent;font-style:normal}
+.payment-method-card:has(input:checked){border-color:rgba(214,168,79,.48);background:linear-gradient(180deg,rgba(214,168,79,.10),rgba(214,168,79,.025));box-shadow:inset 0 0 0 1px rgba(214,168,79,.05)}
+.payment-method-card:has(input:checked) i{background:#d6a84f;color:#15100a;border-color:#d6a84f;font-weight:950}
+.payment-method-help{display:block;margin-top:8px;color:#7e868e;font-size:.68rem}
+
+/* ===== BADGES E EDIÇÃO NO ADMIN ===== */
+.payment-badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;font-size:.67rem;font-weight:850;border:1px solid rgba(255,255,255,.08);white-space:nowrap}
+.payment-badge.pix{color:#84dbc8;background:rgba(58,185,157,.08);border-color:rgba(58,185,157,.18)}
+.payment-badge.cartao{color:#a9c8ff;background:rgba(75,126,215,.08);border-color:rgba(75,126,215,.18)}
+.payment-badge.dinheiro{color:#d8c98c;background:rgba(190,163,75,.08);border-color:rgba(190,163,75,.18)}
+.payment-admin-select{min-width:110px;padding:7px 9px;border-radius:9px;border:1px solid rgba(255,255,255,.09);background:#0d1012;color:#e9e5dd;font-weight:750;color-scheme:dark}
+.payment-admin-select.pix{border-color:rgba(58,185,157,.25)}
+.payment-admin-select.cartao{border-color:rgba(75,126,215,.25)}
+.payment-admin-select.dinheiro{border-color:rgba(190,163,75,.25)}
+
+/* ===== RESUMO FINANCEIRO POR PAGAMENTO ===== */
+.finance-payment-summary,.profile-payment-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.payment-summary-card{display:grid;gap:5px;padding:14px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:linear-gradient(180deg,#111416,#0c0e10);min-width:0}
+.payment-summary-card span{font-size:.67rem;text-transform:uppercase;letter-spacing:.05em;color:#899198;font-weight:800}
+.payment-summary-card strong{font-size:1.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.payment-summary-card small{font-size:.65rem;color:#747d85}
+.payment-summary-card.pix{border-color:rgba(58,185,157,.16)}
+.payment-summary-card.pix strong{color:#84dbc8}
+.payment-summary-card.card{border-color:rgba(75,126,215,.16)}
+.payment-summary-card.card strong{color:#a9c8ff}
+.payment-summary-card.cash{border-color:rgba(190,163,75,.16)}
+.payment-summary-card.cash strong{color:#dfcf91}
+
+.finance-barber-payments,.annual-month-payments,.profile-period-payments{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:9px}
+.finance-barber-payments span,.annual-month-payments span,.profile-period-payments span{display:grid;gap:3px;padding:7px 8px;border-radius:9px;background:rgba(255,255,255,.025);font-size:.60rem;color:#818991;min-width:0}
+.finance-barber-payments b,.annual-month-payments b,.profile-period-payments b{color:#e5dfd3;font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-period-payments{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.055)}
+
+@media(max-width:720px){
+  .payment-method-grid,.finance-payment-summary,.profile-payment-summary{grid-template-columns:1fr}
+  .finance-barber-payments,.annual-month-payments,.profile-period-payments{grid-template-columns:1fr}
+}
