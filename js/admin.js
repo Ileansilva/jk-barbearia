@@ -1,4 +1,5 @@
 let session=null, services=[], barbers=[], galleryItems=[], financeBookings=[], currentProfileBarberId=null;
+let serviceCropState={img:null,file:null,zoom:100,x:0,y:0};
 const $=(s)=>document.querySelector(s);
 
 function adminToast(message,error=false){
@@ -21,6 +22,11 @@ document.addEventListener("DOMContentLoaded",async()=>{
   $("#logout")?.addEventListener("click",logout);
   document.querySelectorAll("[data-panel]").forEach(b=>b.addEventListener("click",()=>switchPanel(b.dataset.panel,b)));
   $("#serviceForm")?.addEventListener("submit",saveService);
+  $("#serviceImageFile")?.addEventListener("change",loadServiceCropImage);
+  $("#serviceCropZoom")?.addEventListener("input",updateServiceCropFromControls);
+  $("#serviceCropX")?.addEventListener("input",updateServiceCropFromControls);
+  $("#serviceCropY")?.addEventListener("input",updateServiceCropFromControls);
+  $("#serviceCropReset")?.addEventListener("click",resetServiceCropControls);
   $("#barberForm")?.addEventListener("submit",saveBarber);
   $("#galleryForm")?.addEventListener("submit",saveGalleryItem);
   $("#settingsForm")?.addEventListener("submit",saveSettings);
@@ -155,8 +161,10 @@ async function renderServicesAdmin(){
   const {data,error}=await sb.from("services").select("*").order("sort_order").order("id");
   if(error){root.innerHTML='<div class="empty">Erro ao carregar serviços.</div>';console.error(error);return;}
   services=data||[];
-  root.innerHTML=services.map(s=>`<div class="service-admin">
-    <img src="${s.image_url||'assets/corte-classico.svg'}" alt="">
+  root.innerHTML=services.map(s=>`<div class="service-admin service-admin-item">
+    <div class="service-admin-image-wrap">
+      <img class="service-admin-image" src="${s.image_url||'assets/corte-classico.svg'}" alt="${JK.esc(s.name||"Serviço")}">
+    </div>
     <strong>${JK.esc(s.name)}</strong>
     <p class="muted">${JK.esc(s.description||"")}</p>
     <div class="price-row"><span class="price">${JK.money(s.price)}</span><span>${s.duration_minutes} min</span></div>
@@ -166,6 +174,87 @@ async function renderServicesAdmin(){
       <button type="button" class="mini-btn" onclick="removeService(${s.id})">Excluir</button>
     </div>
   </div>`).join("");
+}
+
+
+function loadServiceCropImage(e){
+  const file=e.target.files?.[0];
+  if(!file){
+    serviceCropState={img:null,file:null,zoom:100,x:0,y:0};
+    $("#serviceCropEditor").hidden=true;
+    return;
+  }
+  if(file.size>10*1024*1024){
+    e.target.value="";
+    return adminToast("A imagem deve ter no máximo 10 MB.",true);
+  }
+  const img=new Image();
+  img.onload=()=>{
+    serviceCropState={img,file,zoom:100,x:0,y:0};
+    $("#serviceCropEditor").hidden=false;
+    resetServiceCropControls();
+    URL.revokeObjectURL(img.src);
+  };
+  img.onerror=()=>{
+    e.target.value="";
+    adminToast("Não foi possível abrir essa imagem.",true);
+  };
+  img.src=URL.createObjectURL(file);
+}
+function updateServiceCropFromControls(){
+  serviceCropState.zoom=Number($("#serviceCropZoom")?.value||100);
+  serviceCropState.x=Number($("#serviceCropX")?.value||0);
+  serviceCropState.y=Number($("#serviceCropY")?.value||0);
+  $("#serviceCropZoomValue").textContent=`${serviceCropState.zoom}%`;
+  $("#serviceCropXValue").textContent=serviceCropState.x;
+  $("#serviceCropYValue").textContent=serviceCropState.y;
+  drawServiceCropPreview();
+}
+function resetServiceCropControls(){
+  const z=$("#serviceCropZoom"),x=$("#serviceCropX"),y=$("#serviceCropY");
+  if(z)z.value="100"; if(x)x.value="0"; if(y)y.value="0";
+  updateServiceCropFromControls();
+}
+function drawServiceCrop(canvas,width,height){
+  const img=serviceCropState.img;
+  if(!img||!canvas)return;
+  const ctx=canvas.getContext("2d");
+  canvas.width=width; canvas.height=height;
+  ctx.clearRect(0,0,width,height);
+
+  const base=Math.max(width/img.naturalWidth,height/img.naturalHeight);
+  const scale=base*(serviceCropState.zoom/100);
+  const dw=img.naturalWidth*scale, dh=img.naturalHeight*scale;
+  const overflowX=Math.max(0,dw-width);
+  const overflowY=Math.max(0,dh-height);
+
+  // -100 = left/top edge, 0 = center, +100 = right/bottom edge
+  const dx=(width-dw)/2 - (serviceCropState.x/100)*(overflowX/2);
+  const dy=(height-dh)/2 - (serviceCropState.y/100)*(overflowY/2);
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality="high";
+  ctx.drawImage(img,dx,dy,dw,dh);
+}
+function drawServiceCropPreview(){
+  const canvas=$("#serviceCropCanvas");
+  if(!canvas||!serviceCropState.img)return;
+  drawServiceCrop(canvas,720,495);
+}
+async function buildCroppedServiceFile(){
+  if(!serviceCropState.img||!serviceCropState.file)return null;
+  const canvas=document.createElement("canvas");
+  drawServiceCrop(canvas,1200,825);
+  const blob=await new Promise((resolve,reject)=>{
+    canvas.toBlob(b=>b?resolve(b):reject(new Error("Não foi possível processar a imagem.")),"image/jpeg",0.9);
+  });
+  return new File([blob],`servico-${Date.now()}.jpg`,{type:"image/jpeg"});
+}
+function clearServiceCrop(){
+  serviceCropState={img:null,file:null,zoom:100,x:0,y:0};
+  const input=$("#serviceImageFile"); if(input)input.value="";
+  const editor=$("#serviceCropEditor"); if(editor)editor.hidden=true;
+  const z=$("#serviceCropZoom"),x=$("#serviceCropX"),y=$("#serviceCropY");
+  if(z)z.value="100"; if(x)x.value="0"; if(y)y.value="0";
 }
 
 async function uploadImage(file){
@@ -196,14 +285,15 @@ async function saveService(e){
 
   try{
     let image=String(f.get("image_url")||"").trim()||null;
-    const uploaded=await uploadImage(f.get("image_file"));
+    const croppedFile=await buildCroppedServiceFile();
+    const uploaded=await uploadImage(croppedFile||f.get("image_file"));
     if(uploaded)image=uploaded;
     const payload={name,price,duration_minutes:duration,description:String(f.get("description")||"").trim(),image_url:image,sort_order:Number(f.get("sort_order")||0)};
     const result=id
       ? await sb.from("services").update(payload).eq("id",Number(id)).select().single()
       : await sb.from("services").insert({...payload,active:true}).select().single();
     if(result.error)throw result.error;
-    form.reset();$("#serviceId").value="";$("#serviceSort").value="0";
+    form.reset();$("#serviceId").value="";$("#serviceSort").value="0";clearServiceCrop();
     adminToast(id?"Serviço atualizado com sucesso.":"Serviço salvo com sucesso.");
     await renderServicesAdmin();await renderKPIs();
   }catch(err){console.error(err);adminToast("Erro ao salvar: "+(err?.message||"erro desconhecido"),true);}
@@ -213,7 +303,7 @@ async function saveService(e){
 function editService(id){
   const s=services.find(x=>Number(x.id)===Number(id));
   if(!s)return adminToast("Serviço não encontrado.",true);
-  $("#serviceId").value=s.id;$("#serviceName").value=s.name||"";$("#servicePrice").value=s.price??0;$("#serviceDuration").value=s.duration_minutes??30;$("#serviceDescription").value=s.description||"";$("#serviceImage").value=s.image_url||"";$("#serviceSort").value=s.sort_order??0;
+  $("#serviceId").value=s.id;$("#serviceName").value=s.name||"";$("#servicePrice").value=s.price??0;$("#serviceDuration").value=s.duration_minutes??30;$("#serviceDescription").value=s.description||"";$("#serviceImage").value=s.image_url||"";$("#serviceSort").value=s.sort_order??0;clearServiceCrop();
   $("#serviceForm").scrollIntoView({behavior:"smooth",block:"start"});
   setTimeout(()=>$("#serviceName")?.focus(),250);
   adminToast("Serviço carregado para edição.");
