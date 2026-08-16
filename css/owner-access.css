@@ -1,0 +1,17 @@
+/* JK Barbearia — acesso discreto do proprietário */
+.owner-link{
+  display:inline-flex;align-items:center;gap:6px;padding:9px 11px;border-radius:10px;
+  color:#b7bbc1!important;font-size:.78rem;font-weight:700;
+  border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);
+  transition:.2s ease
+}
+.owner-link:hover{color:#f0d58a!important;border-color:rgba(214,168,79,.22);background:rgba(214,168,79,.06)}
+.footer-owner-link{
+  margin-left:auto;color:#8f959d!important;font-size:.74rem;text-decoration:none;
+  padding:7px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.055);transition:.2s ease
+}
+.footer-owner-link:hover{color:#e4ca82!important;border-color:rgba(214,168,79,.2)}
+@media(max-width:760px){
+  .owner-link{width:100%;justify-content:center;margin-top:2px}
+  .footer-owner-link{margin-left:0;width:100%;text-align:center}
+}
