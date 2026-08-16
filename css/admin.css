@@ -17,7 +17,7 @@
 .finance-filter{display:grid;gap:7px;min-width:250px}
 .finance-filter label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .finance-filter select{border:1px solid rgba(255,255,255,.1);background:#0a0a0b;color:var(--text);padding:12px 14px;border-radius:12px}
-.finance-period-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:18px}
+.finance-period-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-bottom:18px}
 .finance-period-card{border:1px solid var(--line);background:linear-gradient(160deg,rgba(208,162,85,.07),#111 52%);border-radius:20px;padding:20px}
 .finance-period-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
 .finance-period-head span{font-size:1.05rem;font-weight:800}
@@ -39,3 +39,33 @@
 .finance-table td strong{color:var(--gold2)}
 @media(max-width:1050px){.finance-period-grid,.finance-barber-grid{grid-template-columns:1fr}.finance-hero{align-items:stretch;flex-direction:column}.finance-filter{width:100%;min-width:0}}
 @media(max-width:560px){.finance-hero{padding:18px}.finance-hero h2{font-size:1.55rem}.finance-period-card{padding:16px}.finance-values div{align-items:flex-start}.finance-barber-numbers{grid-template-columns:1fr}.finance-barber-numbers div{display:flex;justify-content:space-between;align-items:center}.finance-barber-numbers span{margin:0}.barber-admin-card .action-row .mini-btn{flex:1 1 45%}}
+
+.finance-year-card{background:linear-gradient(160deg,rgba(208,162,85,.14),#111 55%);border-color:rgba(208,162,85,.35)}
+
+
+/* Perfil visual do barbeiro */
+.barber-photo-uploader{display:flex;align-items:center;gap:18px;padding:16px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:#0d0d0e}
+.barber-photo-preview,.profile-barber-photo{width:112px;height:112px;border-radius:50%;overflow:hidden;display:grid;place-items:center;flex:none;background:linear-gradient(145deg,rgba(208,162,85,.18),#171717);border:3px solid rgba(208,162,85,.7);box-shadow:0 0 0 4px #111,0 10px 34px rgba(0,0,0,.35);font-size:2rem}
+.barber-photo-preview img,.profile-barber-photo img,.barber-card-photo{width:100%;height:100%;object-fit:cover}
+.barber-photo-uploader input[type=file]{max-width:100%}
+.barber-card-profile{display:flex;align-items:center;gap:15px;width:100%;padding:0 0 14px;border:0;border-bottom:1px solid rgba(255,255,255,.07);background:transparent;color:inherit;text-align:left;cursor:pointer}
+.barber-card-photo{width:76px;height:76px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);box-shadow:0 0 0 3px rgba(208,162,85,.1)}
+.barber-card-photo.small{width:48px;height:48px;flex:none}
+.barber-card-info strong{display:block;font-size:1.05rem}
+.barber-card-info small{display:block;color:var(--muted);margin-top:5px}
+.barber-profile-header{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:24px;background:radial-gradient(circle at 85% 10%,rgba(208,162,85,.17),transparent 35%),#111}
+.barber-profile-back{align-self:start}
+.barber-profile-identity{display:flex;align-items:center;gap:20px}
+.barber-profile-identity h2{font-size:2.2rem;margin:7px 0}
+.profile-barber-photo{width:132px;height:132px}
+.barber-profile-date{display:grid;gap:8px;min-width:220px}
+.barber-profile-date label{font-size:.76rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.barber-profile-date input{border:1px solid rgba(255,255,255,.12);background:#09090a;color:var(--text);padding:12px;border-radius:12px}
+.profile-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin:18px 0}
+.barber-profile-periods{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.profile-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:15px}
+.profile-summary-grid div{padding:13px;border-radius:13px;background:rgba(255,255,255,.025)}
+.profile-summary-grid span{display:block;font-size:.72rem;color:var(--muted);margin-bottom:6px}
+.profile-summary-grid b{font-size:1rem;color:var(--gold2)}
+@media(max-width:950px){.barber-profile-header{grid-template-columns:1fr}.barber-profile-date{min-width:0}.profile-kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.barber-photo-uploader,.barber-profile-identity{align-items:flex-start;flex-direction:column}.barber-photo-preview{width:96px;height:96px}.profile-barber-photo{width:112px;height:112px}.barber-profile-identity h2{font-size:1.7rem}.profile-kpis,.barber-profile-periods{grid-template-columns:1fr}.profile-summary-grid{grid-template-columns:1fr}.profile-summary-grid div{display:flex;justify-content:space-between;align-items:center}}
