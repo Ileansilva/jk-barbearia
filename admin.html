@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin | JK Barbearia</title><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/admin.css"><link rel="stylesheet" href="css/admin-v2.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"><link rel="stylesheet" href="css/admin-v3.css"><link rel="stylesheet" href="css/admin-v4.css"></head><body class="admin-body"><div class="admin-ambient" aria-hidden="true"></div>
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin | JK Barbearia</title><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/admin.css"><link rel="stylesheet" href="css/admin-v2.css"><link rel="stylesheet" href="css/admin-v3.css"><link rel="stylesheet" href="css/admin-v5.css"></head><body class="admin-body"><div class="admin-ambient" aria-hidden="true"></div>
 <div id="loginOverlay" class="login-overlay"><form id="loginForm" class="login-card"><img src="assets/jk-logo.png" alt="Logo JK Barbearia"><h1>Área do proprietário</h1><p>Login protegido pelo Supabase Auth.</p><div class="field"><label>E-mail</label><input name="email" type="email" required></div><div class="field" style="margin-top:12px"><label>Senha</label><input name="password" type="password" required></div><div id="loginError" style="color:#ff9c9c;margin-top:9px"></div><button class="btn btn-primary" type="submit">Entrar</button></form></div>
 <div class="admin-wrap"><aside class="sidebar"><a href="index.html"><img src="assets/jk-logo.png" alt="Logo JK Barbearia"></a><nav class="side-nav"><button class="active" data-panel="dashboard">Visão geral</button><button data-panel="appointments">Agendamentos</button><button data-panel="services">Serviços</button><button data-panel="barbers">Barbeiros</button><button data-panel="finance">Financeiro</button><button data-panel="gallery">Galeria</button><button data-panel="settings">Configurações</button></nav></aside><main class="admin-main"><div class="admin-top"><div class="admin-brand-title"><img src="assets/jk-logo.png" alt="Logo JK Barbearia"><div><span class="eyebrow">Painel administrativo</span><h1>JK Barbearia</h1></div></div><div class="action-row"><a class="btn btn-outline" href="index.html">Ver site</a><button id="logout" class="btn btn-outline">Sair</button></div></div>
 <section id="dashboard" class="panel active"><div class="kpis"><div class="kpi"><span>Hoje</span><strong id="kpiToday">0</strong></div><div class="kpi"><span>Este mês</span><strong id="kpiMonth">0</strong></div><div class="kpi"><span>Faturamento do mês*</span><strong id="kpiRevenue">R$ 0</strong></div><div class="kpi"><span>Serviços ativos</span><strong id="kpiServices">0</strong></div><div class="kpi"><span>Barbeiros ativos</span><strong id="kpiBarbers">0</strong></div><div class="kpi"><span>Fotos na galeria</span><strong id="kpiGallery">0</strong></div></div><div class="card"><p class="muted">*Estimativa com agendamentos não cancelados.</p></div></section>
@@ -118,7 +118,7 @@
     </div>
     <div class="barber-profile-date">
       <label for="profileDate">Escolha uma data</label>
-      <input id="profileDate" class="date-picker" type="text" placeholder="Escolher data">
+      <input id="profileDate" type="date" aria-label="Data do perfil">
       <button id="profileTodayBtn" type="button" class="btn btn-outline">Hoje</button>
     </div>
   </div>
@@ -166,7 +166,7 @@
 </section>
 
 <section id="finance" class="panel">
-  <div class="finance-hero finance-hero-v4">
+  <div class="finance-hero finance-hero-v5">
     <div class="finance-hero-copy">
       <span class="eyebrow">Controle financeiro</span>
       <h2>Financeiro da barbearia</h2>
@@ -179,7 +179,7 @@
           <option value="">Todos os barbeiros</option>
         </select>
       </div>
-      <div class="finance-hero-badge" aria-hidden="true">📈</div>
+      <div class="finance-hero-badge-v5" aria-hidden="true"><span>↗</span></div>
     </div>
   </div>
 
@@ -188,7 +188,7 @@
       <span class="finance-filter-icon">📅</span>
       <div>
         <label>Data específica</label>
-        <input id="financeDateFilter" class="date-picker" type="text" placeholder="Escolher data">
+        <input id="financeDateFilter" type="date" aria-label="Data específica">
       </div>
       <button id="financeTodayFilterBtn" type="button" class="filter-action">Hoje</button>
       <button id="financeClearDateBtn" type="button" class="filter-action muted-action">Limpar</button>
@@ -198,7 +198,7 @@
       <span class="finance-filter-icon">🗓️</span>
       <div>
         <label>Mês</label>
-        <input id="financeMonthFilter" class="month-picker" type="text" placeholder="Escolher mês">
+        <input id="financeMonthFilter" type="month" aria-label="Mês">
       </div>
     </div>
 
@@ -317,4 +317,4 @@
 
 <section id="gallery" class="panel"><div class="card"><div class="card-head"><div><h2>Galeria de trabalhos</h2><p class="muted" style="margin:.35rem 0 0">Publique fotos dos cortes e trabalhos realizados. Você pode selecionar várias fotos de uma vez.</p></div></div><form id="galleryForm" class="form-grid"><input id="galleryId" name="id" type="hidden"><input id="galleryCurrentImage" name="current_image" type="hidden"><div class="field"><label>Título (opcional)</label><input id="galleryTitle" name="title" maxlength="80" placeholder="Ex.: Degradê navalhado"></div><div class="field"><label>Ordem de exibição</label><input id="gallerySort" name="sort_order" type="number" value="0"></div><div class="field full"><label>Legenda (opcional)</label><textarea id="galleryCaption" name="caption" maxlength="220" rows="3" placeholder="Detalhes do trabalho realizado..."></textarea></div><div class="field full"><label>Fotos</label><input id="galleryFiles" name="image_files" type="file" accept="image/*" multiple><small class="muted">No celular, você pode escolher fotos da galeria. Para editar apenas título/legenda, deixe este campo vazio.</small></div><div class="field full"><button id="gallerySaveBtn" type="submit" class="btn btn-primary">Publicar na galeria</button></div></form></div><div id="galleryAdminGrid" class="gallery-admin-grid"></div></section>
 <section id="settings" class="panel"><div class="card"><form id="settingsForm" class="form-grid"><div class="field"><label>Nome da empresa</label><input id="businessName" name="businessName"></div><div class="field"><label>WhatsApp</label><input id="phone" name="phone"></div><div class="field"><label>Instagram</label><input id="instagram" name="instagram"></div><div class="field"><label>Endereço</label><input id="address" name="address"></div><div class="field"><label>Abertura</label><input id="openTime" name="openTime" type="time"></div><div class="field"><label>Fechamento</label><input id="closeTime" name="closeTime" type="time"></div><div class="field"><label>Intervalo (min)</label><input id="interval" name="interval" type="number" min="15"></div><div class="field full"><label>Dias de trabalho (0=dom ... 6=sáb)</label><input id="workDays" name="workDays"></div><div class="field full"><label>Datas bloqueadas (AAAA-MM-DD, separadas por vírgula)</label><input id="blockedDates" name="blockedDates"></div><div class="field full"><button type="submit" class="btn btn-primary">Salvar configurações</button></div></form></div></section>
-</main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="https://cdn.jsdelivr.net/npm/flatpickr"></script><script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script><script src="js/admin.js"></script></body></html>
+</main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/admin.js"></script></body></html>
