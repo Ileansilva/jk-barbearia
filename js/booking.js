@@ -1,3 +1,21 @@
+/*
+==========================================================
+JK BARBEARIA - AGENDAMENTO DO CLIENTE
+==========================================================
+Este arquivo controla:
+- carregamento dos serviços
+- carregamento dos barbeiros
+- regras configuradas pelo proprietário
+- datas permitidas
+- horários disponíveis
+- resumo do agendamento
+- envio do agendamento ao Supabase
+
+Ao revender, normalmente NÃO é necessário mudar este arquivo.
+As regras são alteradas no painel Configurações.
+==========================================================
+*/
+
 let selectedTime="";
 let settings=null;
 let services=[];
@@ -7,6 +25,7 @@ const qs=(s)=>document.querySelector(s);
 
 document.addEventListener("DOMContentLoaded", initBooking);
 
+// ===== INICIALIZA A PÁGINA DE AGENDAMENTO =====
 async function initBooking(){
   const form=qs("#bookingForm");
   const date=qs("#date");
@@ -37,10 +56,14 @@ async function initBooking(){
     renderSummary();
     renderTimes();
   });
+  document.querySelectorAll('input[name="payment_method"]').forEach(input=>{
+    input.addEventListener("change",renderSummary);
+  });
 
   await loadBase();
 }
 
+// ===== CARREGA SERVIÇOS, BARBEIROS E CONFIGURAÇÕES =====
 async function loadBase(){
   const serviceSel=qs("#service");
   const barberSel=qs("#barber");
@@ -91,6 +114,7 @@ async function loadBase(){
   }
 }
 
+// ===== EXIBE OS BARBEIROS PARA O CLIENTE =====
 function renderBookingBarberCards(){
   const root=qs("#bookingBarberCards");
   if(!root)return;
@@ -142,6 +166,7 @@ function validISODate(value){
 
 const WEEK_NAMES=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 
+// ===== APLICA AS CONFIGURAÇÕES DO PROPRIETÁRIO NO AGENDAMENTO =====
 function applySettingsToBooking(){
   if(!settings)return;
 
@@ -183,6 +208,7 @@ function applySettingsToBooking(){
   }
 }
 
+// ===== VALIDA DIA, BLOQUEIOS E REGRAS DE AGENDA =====
 function validateBookingDateAgainstSettings(date){
   if(!settings)return "";
   if(settings.booking_enabled===false)return "O agendamento online está temporariamente desativado.";
@@ -213,6 +239,7 @@ function validateBookingDateAgainstSettings(date){
   return "";
 }
 
+// ===== BUSCA HORÁRIOS DISPONÍVEIS NO SUPABASE =====
 async function renderTimes(){
   selectedTime="";
   renderSummary();
@@ -282,6 +309,11 @@ async function renderTimes(){
   }
 }
 
+function paymentMethodLabel(value){
+  const map={pix:"Pix",cartao:"Cartão",dinheiro:"Dinheiro"};
+  return map[String(value||"").toLowerCase()]||"—";
+}
+
 function renderSummary(){
   const sid=qs("#service")?.value;
   const bid=qs("#barber")?.value;
@@ -297,6 +329,9 @@ function renderSummary(){
   if(summaryBarber)summaryBarber.textContent=b?.name||"—";
   if(summaryService)summaryService.textContent=s?.name||"—";
   if(summaryPrice)summaryPrice.textContent=s?JK.money(s.price):"—";
+  const payment=qs('input[name="payment_method"]:checked')?.value||"";
+  const summaryPayment=qs("#summaryPayment");
+  if(summaryPayment)summaryPayment.textContent=paymentMethodLabel(payment);
 
   const d=qs("#date")?.value||"";
   if(summaryDate){
@@ -307,6 +342,7 @@ function renderSummary(){
   if(summaryTime)summaryTime.textContent=selectedTime||"—";
 }
 
+// ===== CONFIRMA O AGENDAMENTO =====
 async function submitBooking(e){
   e.preventDefault();
 
@@ -317,6 +353,7 @@ async function submitBooking(e){
   const barberId=Number(f.get("barber")||0);
   const serviceId=Number(f.get("service")||0);
   const bookingDate=String(f.get("date")||"");
+  const paymentMethod=String(f.get("payment_method")||"").toLowerCase();
 
   if(name.length<2)return toast("Digite seu nome.","error");
   if(phone.length<8)return toast("Digite um WhatsApp válido.","error");
@@ -325,6 +362,7 @@ async function submitBooking(e){
   if(!validISODate(bookingDate))return toast("Escolha a data do atendimento.","error");
   const dateRuleError=validateBookingDateAgainstSettings(bookingDate); if(dateRuleError)return toast(dateRuleError,"error");
   if(!selectedTime)return toast("Escolha um horário disponível.","error");
+  if(!["pix","cartao","dinheiro"].includes(paymentMethod))return toast("Escolha a forma de pagamento.","error");
 
   const btn=form.querySelector("button[type=submit]");
   if(!btn||btn.disabled)return;
@@ -341,7 +379,8 @@ async function submitBooking(e){
       p_barber_id:barberId,
       p_booking_date:bookingDate,
       p_booking_time:selectedTime,
-      p_notes:String(f.get("notes")||"").trim()
+      p_notes:String(f.get("notes")||"").trim(),
+      p_payment_method:paymentMethod
     });
 
     if(error)throw error;
