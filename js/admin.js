@@ -25,6 +25,12 @@ document.addEventListener("DOMContentLoaded",async()=>{
   $("#galleryForm")?.addEventListener("submit",saveGalleryItem);
   $("#settingsForm")?.addEventListener("submit",saveSettings);
   $("#financeBarberSelect")?.addEventListener("change",()=>renderFinance());
+  $("#financeDateFilter")?.addEventListener("change",()=>{if($("#financeDateFilter").value)$("#financeMonthFilter").value="";renderFinance();});
+  $("#financeMonthFilter")?.addEventListener("change",()=>{if($("#financeMonthFilter").value)$("#financeDateFilter").value="";renderFinance();});
+  $("#financeYearFilter")?.addEventListener("change",()=>renderFinance());
+  $("#financePeriodFilter")?.addEventListener("change",()=>renderFinance());
+  $("#financeTodayFilterBtn")?.addEventListener("click",()=>{$("#financeDateFilter").value=localDateISO();$("#financeMonthFilter").value="";renderFinance();});
+  $("#financeClearDateBtn")?.addEventListener("click",()=>{$("#financeDateFilter").value="";renderFinance();});
   $("#barberPhotoFile")?.addEventListener("change",previewBarberPhoto);
   $("#profileDate")?.addEventListener("change",()=>renderBarberProfileDay());
   $("#profileTodayBtn")?.addEventListener("click",()=>{const d=$("#profileDate"); if(d){d.value=localDateISO(); renderBarberProfileDay();}});
@@ -401,10 +407,11 @@ function financeStats(list){
 }
 function setFinancePeriod(prefix,stats){
   const cap=prefix[0].toUpperCase()+prefix.slice(1);
-  $(`#fin${cap}Cuts`).textContent=`${stats.cuts} ${stats.cuts===1?"corte":"cortes"}`;
-  $(`#fin${cap}Gross`).textContent=JK.money(stats.gross);
-  $(`#fin${cap}Commission`).textContent=JK.money(stats.commission);
-  $(`#fin${cap}Net`).textContent=JK.money(stats.net);
+  const cuts=$(`#fin${cap}Cuts`),gross=$(`#fin${cap}Gross`),commission=$(`#fin${cap}Commission`),net=$(`#fin${cap}Net`);
+  if(cuts)cuts.textContent=`${stats.cuts} ${stats.cuts===1?"corte":"cortes"}`;
+  if(gross)gross.textContent=JK.money(stats.gross);
+  if(commission)commission.textContent=JK.money(stats.commission);
+  if(net)net.textContent=JK.money(stats.net);
 }
 function syncFinanceBarberSelect(){
   const sel=$("#financeBarberSelect"); if(!sel)return;
@@ -494,63 +501,180 @@ async function renderBarberProfileDay(){
   $("#profileYearCommission").textContent=JK.money(yearStats.commission);
 }
 
+
+function ensureFinanceYearOptions(){
+  const sel=$("#financeYearFilter"); if(!sel)return;
+  const current=sel.value;
+  const currentYear=Number(localDateISO().slice(0,4));
+  const years=new Set([currentYear]);
+  financeBookings.forEach(b=>{
+    const y=Number(completionDateISO(b).slice(0,4));
+    if(y)years.add(y);
+  });
+  sel.innerHTML=[...years].sort((a,b)=>b-a).map(y=>`<option value="${y}">${y}</option>`).join("");
+  sel.value=current&&[...sel.options].some(o=>o.value===current)?current:String(currentYear);
+}
+function monthLastDate(monthValue){
+  const [y,m]=monthValue.split("-").map(Number);
+  return `${y}-${String(m).padStart(2,"0")}-${String(new Date(y,m,0).getDate()).padStart(2,"0")}`;
+}
+function periodRange(year,period){
+  const y=String(year);
+  const map={
+    year:[`${y}-01-01`,`${y}-12-31`,"Ano inteiro"],
+    semester1:[`${y}-01-01`,`${y}-06-30`,"1º semestre (jan–jun)"],
+    semester2:[`${y}-07-01`,`${y}-12-31`,"2º semestre (jul–dez)"],
+    quarter1:[`${y}-01-01`,`${y}-03-31`,"1º trimestre (jan–mar)"],
+    quarter2:[`${y}-04-01`,`${y}-06-30`,"2º trimestre (abr–jun)"],
+    quarter3:[`${y}-07-01`,`${y}-09-30`,"3º trimestre (jul–set)"],
+    quarter4:[`${y}-10-01`,`${y}-12-31`,"4º trimestre (out–dez)"]
+  };
+  return map[period]||map.year;
+}
+function dateRangeFilter(list,from,to){
+  return list.filter(b=>{const d=completionDateISO(b);return d>=from&&d<=to;});
+}
+function customFinanceSelection(base){
+  const date=$("#financeDateFilter")?.value||"";
+  const month=$("#financeMonthFilter")?.value||"";
+  const year=$("#financeYearFilter")?.value||localDateISO().slice(0,4);
+  const period=$("#financePeriodFilter")?.value||"year";
+  if(date)return {list:base.filter(b=>completionDateISO(b)===date),title:`Dia ${new Date(date+"T12:00:00").toLocaleDateString("pt-BR")}`,kind:"day",date};
+  if(month){
+    const from=`${month}-01`,to=monthLastDate(month);
+    const label=new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric"}).format(new Date(from+"T12:00:00"));
+    return {list:dateRangeFilter(base,from,to),title:label[0].toUpperCase()+label.slice(1),kind:"month",month,from,to};
+  }
+  const [from,to,label]=periodRange(year,period);
+  return {list:dateRangeFilter(base,from,to),title:`${label} de ${year}`,kind:"period",from,to,year,period};
+}
+function renderFinanceCustom(stats,title){
+  $("#financeCustomTitle").textContent=title;
+  $("#financeCustomCuts").textContent=stats.cuts;
+  $("#financeCustomGross").textContent=JK.money(stats.gross);
+  $("#financeCustomCommission").textContent=JK.money(stats.commission);
+  $("#financeCustomNet").textContent=JK.money(stats.net);
+}
+function mondayOfDateISO(dateISO){
+  const [y,m,d]=dateISO.split("-").map(Number);
+  const dt=new Date(Date.UTC(y,m-1,d,12));
+  const dow=dt.getUTCDay();
+  const diff=dow===0?-6:1-dow;
+  dt.setUTCDate(dt.getUTCDate()+diff);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth()+1).padStart(2,"0")}-${String(dt.getUTCDate()).padStart(2,"0")}`;
+}
+function addDaysISO(dateISO,days){
+  const [y,m,d]=dateISO.split("-").map(Number);
+  const dt=new Date(Date.UTC(y,m-1,d,12));
+  dt.setUTCDate(dt.getUTCDate()+days);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth()+1).padStart(2,"0")}-${String(dt.getUTCDate()).padStart(2,"0")}`;
+}
+function renderMonthWeeks(base,monthValue){
+  const root=$("#financeWeeksGrid"),card=$("#financeWeeksCard");
+  if(!root||!card)return;
+  if(!monthValue){
+    card.style.display="none";
+    return;
+  }
+  card.style.display="";
+  const first=`${monthValue}-01`,last=monthLastDate(monthValue);
+  const label=new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric"}).format(new Date(first+"T12:00:00"));
+  $("#financeWeeksTitle").textContent=`Semanas de ${label[0].toUpperCase()+label.slice(1)}`;
+
+  let cursor=mondayOfDateISO(first);
+  const weeks=[];
+  let index=1;
+  while(cursor<=last){
+    const end=addDaysISO(cursor,6);
+    const from=cursor<first?first:cursor;
+    const to=end>last?last:end;
+    const list=dateRangeFilter(base,from,to);
+    weeks.push({index,from,to,stats:financeStats(list)});
+    cursor=addDaysISO(cursor,7);
+    index++;
+  }
+  root.innerHTML=weeks.map(w=>`<article class="finance-week-card">
+    <div class="finance-week-title"><strong>Semana ${w.index}</strong><span>${new Date(w.from+"T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(w.to+"T12:00:00").toLocaleDateString("pt-BR")}</span></div>
+    <div class="finance-week-stats">
+      <div><small>Cortes</small><b>${w.stats.cuts}</b></div>
+      <div><small>Faturado</small><b>${JK.money(w.stats.gross)}</b></div>
+      <div><small>Comissões</small><b>${JK.money(w.stats.commission)}</b></div>
+      <div><small>Líquido</small><b>${JK.money(w.stats.net)}</b></div>
+    </div>
+  </article>`).join("");
+}
+function financeBarberStatsForList(list,barberId){
+  return financeStats(list.filter(b=>Number(b.barber_id)===Number(barberId)));
+}
+
 async function renderFinance(){
   if(!$("#financeBarberCards"))return;
 
   if(!barbers.length){
     const br=await sb.from("barbers").select("*").order("sort_order").order("id");
-    if(!br.error)barbers=br.data||[];
+    if(br.error){console.error(br.error);$("#financeBarberCards").innerHTML='<div class="empty">Erro ao carregar barbeiros.</div>';return;}
+    barbers=br.data||[];
   }
   syncFinanceBarberSelect();
 
   const {data,error}=await sb.from("bookings")
-    .select("id,booking_date,booking_time,completed_at,service_name,price,status,barber_id,barber_name,barber_commission_percent,barber_commission_amount")
+    .select("id,client_name,booking_date,booking_time,completed_at,service_name,price,status,barber_id,barber_name,barber_commission_percent,barber_commission_amount")
     .eq("status","concluido")
-    .order("booking_date",{ascending:false})
-    .order("booking_time",{ascending:false});
+    .order("completed_at",{ascending:false});
   if(error){
     console.error(error);
     $("#financeBarberCards").innerHTML='<div class="empty">Erro ao carregar dados financeiros.</div>';
     return;
   }
   financeBookings=data||[];
+  ensureFinanceYearOptions();
 
   const selected=$("#financeBarberSelect")?.value||"";
   const base=selected?financeBookings.filter(b=>String(b.barber_id)===selected):financeBookings;
+
   const today=localDateISO(),week=weekStartISO(),month=monthStartISO(),year=yearStartISO();
-  const byPeriod=(from,to=today)=>base.filter(b=>{const d=completionDateISO(b);return d>=from&&d<=to;});
+  const byPeriod=(from,to=today)=>dateRangeFilter(base,from,to);
   setFinancePeriod("today",financeStats(base.filter(b=>completionDateISO(b)===today)));
   setFinancePeriod("week",financeStats(byPeriod(week)));
   setFinancePeriod("month",financeStats(byPeriod(month)));
-  setFinancePeriod("year",financeStats(byPeriod(year)));
+  setFinancePeriod("year",financeStats(byPeriod(year,`${today.slice(0,4)}-12-31`)));
+
+  const custom=customFinanceSelection(base);
+  renderFinanceCustom(financeStats(custom.list),custom.title);
+  renderMonthWeeks(base,$("#financeMonthFilter")?.value||"");
 
   const selectedBarber=barbers.find(b=>String(b.id)===selected);
-  $("#financeDetailTitle").textContent=selectedBarber?`${selectedBarber.name} — desempenho no mês atual`:"Resumo por barbeiro — mês atual";
+  $("#financeDetailTitle").textContent=selectedBarber
+    ? `${selectedBarber.name} — ${custom.title}`
+    : `Barbeiros — ${custom.title}`;
 
-  const monthBookings=financeBookings.filter(b=>{const d=completionDateISO(b);return d>=month&&d<=today;});
   const cardsRoot=$("#financeBarberCards");
   const cardsBarbers=selectedBarber?[selectedBarber]:barbers;
   if(!cardsBarbers.length){
     cardsRoot.innerHTML='<div class="empty">Nenhum barbeiro cadastrado.</div>';
   }else{
     cardsRoot.innerHTML=cardsBarbers.map(br=>{
-      const list=monthBookings.filter(b=>Number(b.barber_id)===Number(br.id));
-      const st=financeStats(list);
+      const st=financeBarberStatsForList(custom.list,br.id);
       return `<button type="button" class="finance-barber-card" onclick="openBarberProfile(${br.id})">
-        <div class="finance-barber-top">${br.photo_url?`<img class="barber-card-photo small" src="${JK.esc(br.photo_url)}" alt="Foto de ${JK.esc(br.name)}">`:`<span class="barber-avatar small">✂</span>`}<div><strong>${JK.esc(br.name)}</strong><small>${Number(br.commission_percent||0).toLocaleString("pt-BR",{maximumFractionDigits:2})}% de comissão</small></div></div>
+        <div class="finance-barber-top">
+          ${br.photo_url?`<img class="barber-card-photo small" src="${JK.esc(br.photo_url)}" alt="Foto de ${JK.esc(br.name)}">`:`<span class="barber-avatar small">✂</span>`}
+          <div><strong>${JK.esc(br.name)}</strong><small>${Number(br.commission_percent||0).toLocaleString("pt-BR",{maximumFractionDigits:2})}% de comissão</small></div>
+        </div>
         <div class="finance-barber-numbers">
           <div><span>Cortes</span><b>${st.cuts}</b></div>
-          <div><span>Produziu</span><b>${JK.money(st.gross)}</b></div>
+          <div><span>Faturou</span><b>${JK.money(st.gross)}</b></div>
           <div><span>Recebe</span><b>${JK.money(st.commission)}</b></div>
         </div>
+        <span class="finance-open-profile">Abrir perfil individual →</span>
       </button>`;
     }).join("");
   }
 
+  $("#financeTableTitle").textContent=`Cortes concluídos — ${custom.title}`;
   const rows=$("#financeRows");
-  const rowList=base.slice(0,80);
+  const rowList=custom.list.slice().sort((a,b)=>String(b.completed_at||b.booking_date).localeCompare(String(a.completed_at||a.booking_date))).slice(0,150);
   if(!rowList.length){
-    rows.innerHTML='<tr><td colspan="7"><div class="empty">Nenhum corte concluído neste filtro.</div></td></tr>';
+    rows.innerHTML='<tr><td colspan="7"><div class="empty">Nenhum corte concluído neste período.</div></td></tr>';
   }else{
     rows.innerHTML=rowList.map(b=>{
       const commission=commissionForBooking(b),price=Number(b.price||0),pct=percentForBooking(b);
