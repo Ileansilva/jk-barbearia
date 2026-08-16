@@ -1,1 +1,140 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Configurações | JK Barbearia</title><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/admin.css"><link rel="stylesheet" href="css/admin-v2.css"><link rel="stylesheet" href="css/admin-v3.css"><link rel="stylesheet" href="css/admin-v5.css"><link rel="stylesheet" href="css/admin-v6.css"><link rel="stylesheet" href="css/admin-v7.css"><link rel="stylesheet" href="css/admin-v8.css"></head><body class="admin-body admin-multipage" data-admin-page="settings"><div class="admin-ambient" aria-hidden="true"></div><div id="loginOverlay" class="login-overlay"><form id="loginForm" class="login-card"><img src="assets/jk-logo.png" alt="Logo JK Barbearia"><h1>Área do proprietário</h1><p>Acesse a administração da JK Barbearia.</p><div class="field"><label>E-mail</label><input name="email" type="email" required></div><div class="field" style="margin-top:12px"><label>Senha</label><input name="password" type="password" required></div><div id="loginError" style="color:#ff9c9c;margin-top:9px"></div><button class="btn btn-primary" type="submit">Entrar</button></form></div><div class="admin-wrap"><aside class="sidebar"><a class="admin-sidebar-logo" href="admin.html"><img src="assets/jk-logo.png" alt="JK Barbearia"></a><nav class="side-nav side-nav-links"><a class="side-link " href="admin.html"><span>⌂</span>Visão geral</a><a class="side-link " href="agendamentos-admin.html"><span>▣</span>Agendamentos</a><a class="side-link " href="servicos-admin.html"><span>✂</span>Serviços</a><a class="side-link " href="barbeiros-admin.html"><span>♙</span>Barbeiros</a><a class="side-link " href="financeiro-admin.html"><span>$</span>Financeiro</a><a class="side-link " href="galeria-admin.html"><span>▧</span>Galeria</a><a class="side-link active" href="configuracoes-admin.html"><span>⚙</span>Configurações</a></nav><div class="sidebar-bottom"><a class="side-link" href="index.html"><span>↗</span>Ver site</a><button id="logout" class="side-link side-button"><span>⇥</span>Sair</button></div></aside><main class="admin-main"><div class="admin-top"><div class="admin-page-heading"><span class="eyebrow">Painel administrativo</span><h1>Configurações</h1></div><div class="admin-top-actions"><a class="btn btn-outline" href="index.html">Ver site</a></div></div><section id="settings" class="panel active"><div class="card"><form id="settingsForm" class="form-grid"><div class="field"><label>Nome da empresa</label><input id="businessName" name="businessName"></div><div class="field"><label>WhatsApp</label><input id="phone" name="phone"></div><div class="field"><label>Instagram</label><input id="instagram" name="instagram"></div><div class="field"><label>Endereço</label><input id="address" name="address"></div><div class="field"><label>Abertura</label><input id="openTime" name="openTime" type="time"></div><div class="field"><label>Fechamento</label><input id="closeTime" name="closeTime" type="time"></div><div class="field"><label>Intervalo (min)</label><input id="interval" name="interval" type="number" min="15"></div><div class="field full"><label>Dias de trabalho (0=dom ... 6=sáb)</label><input id="workDays" name="workDays"></div><div class="field full"><label>Datas bloqueadas (AAAA-MM-DD, separadas por vírgula)</label><input id="blockedDates" name="blockedDates"></div><div class="field full"><button type="submit" class="btn btn-primary">Salvar configurações</button></div></form></div></section></main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/admin.js"></script></body></html>
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Configurações | JK Barbearia</title><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/admin.css"><link rel="stylesheet" href="css/admin-v2.css"><link rel="stylesheet" href="css/admin-v3.css"><link rel="stylesheet" href="css/admin-v5.css"><link rel="stylesheet" href="css/admin-v6.css"><link rel="stylesheet" href="css/admin-v7.css"><link rel="stylesheet" href="css/admin-v8.css"><link rel="stylesheet" href="css/settings-v11.css"></head><body class="admin-body admin-multipage" data-admin-page="settings"><div class="admin-ambient" aria-hidden="true"></div><div id="loginOverlay" class="login-overlay"><form id="loginForm" class="login-card"><img src="assets/jk-logo.png" alt="Logo JK Barbearia"><h1>Área do proprietário</h1><p>Acesse a administração da JK Barbearia.</p><div class="field"><label>E-mail</label><input name="email" type="email" required></div><div class="field" style="margin-top:12px"><label>Senha</label><input name="password" type="password" required></div><div id="loginError" style="color:#ff9c9c;margin-top:9px"></div><button class="btn btn-primary" type="submit">Entrar</button></form></div><div class="admin-wrap"><aside class="sidebar"><a class="admin-sidebar-logo" href="admin.html"><img src="assets/jk-logo.png" alt="JK Barbearia"></a><nav class="side-nav side-nav-links"><a class="side-link " href="admin.html"><span>⌂</span>Visão geral</a><a class="side-link " href="agendamentos-admin.html"><span>▣</span>Agendamentos</a><a class="side-link " href="servicos-admin.html"><span>✂</span>Serviços</a><a class="side-link " href="barbeiros-admin.html"><span>♙</span>Barbeiros</a><a class="side-link " href="financeiro-admin.html"><span>$</span>Financeiro</a><a class="side-link " href="galeria-admin.html"><span>▧</span>Galeria</a><a class="side-link active" href="configuracoes-admin.html"><span>⚙</span>Configurações</a></nav><div class="sidebar-bottom"><a class="side-link" href="index.html"><span>↗</span>Ver site</a><button id="logout" class="side-link side-button"><span>⇥</span>Sair</button></div></aside><main class="admin-main"><div class="admin-top"><div class="admin-page-heading"><span class="eyebrow">Painel administrativo</span><h1>Configurações</h1></div><div class="admin-top-actions"><a class="btn btn-outline" href="index.html">Ver site</a></div></div><section id="settings" class="panel active">
+  <div class="settings-hero card">
+    <div>
+      <span class="eyebrow">Regras da agenda</span>
+      <h2>Configurações da barbearia</h2>
+      <p class="muted">Tudo que for alterado aqui passa a valer automaticamente no agendamento dos clientes.</p>
+    </div>
+    <div class="settings-sync-badge"><span>●</span> Sincronizado com a agenda</div>
+  </div>
+
+  <form id="settingsForm" class="settings-professional-form">
+    <section class="settings-section card">
+      <div class="settings-section-head">
+        <div>
+          <span class="settings-step">01</span>
+          <h3>Informações da barbearia</h3>
+          <p class="muted">Esses dados podem aparecer para o cliente durante o agendamento.</p>
+        </div>
+      </div>
+      <div class="settings-grid">
+        <div class="field"><label>Nome da barbearia</label><input id="businessName" name="businessName"></div>
+        <div class="field"><label>WhatsApp</label><input id="phone" name="phone" placeholder="(00) 00000-0000"></div>
+        <div class="field"><label>Instagram</label><input id="instagram" name="instagram" placeholder="@seuinstagram"></div>
+        <div class="field"><label>Endereço</label><input id="address" name="address" placeholder="Rua, número, bairro"></div>
+      </div>
+    </section>
+
+    <section class="settings-section card">
+      <div class="settings-section-head">
+        <div>
+          <span class="settings-step">02</span>
+          <h3>Horários de atendimento</h3>
+          <p class="muted">Define quando os horários serão oferecidos ao cliente.</p>
+        </div>
+      </div>
+      <div class="settings-grid settings-grid-3">
+        <div class="field"><label>Abertura</label><input id="openTime" name="openTime" type="time" required></div>
+        <div class="field"><label>Fechamento</label><input id="closeTime" name="closeTime" type="time" required></div>
+        <div class="field">
+          <label>Intervalo entre horários</label>
+          <select id="interval" name="interval">
+            <option value="10">10 minutos</option>
+            <option value="15">15 minutos</option>
+            <option value="20">20 minutos</option>
+            <option value="30">30 minutos</option>
+            <option value="45">45 minutos</option>
+            <option value="60">60 minutos</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-section card">
+      <div class="settings-section-head">
+        <div>
+          <span class="settings-step">03</span>
+          <h3>Dias de funcionamento</h3>
+          <p class="muted">Marque os dias em que a barbearia atende.</p>
+        </div>
+      </div>
+      <input id="workDays" name="workDays" type="hidden">
+      <div id="workDaysPicker" class="week-days-picker">
+        <button type="button" data-day="0">Dom<span>Domingo</span></button>
+        <button type="button" data-day="1">Seg<span>Segunda</span></button>
+        <button type="button" data-day="2">Ter<span>Terça</span></button>
+        <button type="button" data-day="3">Qua<span>Quarta</span></button>
+        <button type="button" data-day="4">Qui<span>Quinta</span></button>
+        <button type="button" data-day="5">Sex<span>Sexta</span></button>
+        <button type="button" data-day="6">Sáb<span>Sábado</span></button>
+      </div>
+    </section>
+
+    <section class="settings-section card">
+      <div class="settings-section-head">
+        <div>
+          <span class="settings-step">04</span>
+          <h3>Datas bloqueadas</h3>
+          <p class="muted">Feriados, folgas e qualquer dia em que não haverá atendimento.</p>
+        </div>
+      </div>
+      <input id="blockedDates" name="blockedDates" type="hidden">
+      <div class="blocked-date-builder">
+        <input id="blockedDateInput" type="date" aria-label="Escolher data para bloquear">
+        <button id="addBlockedDateBtn" type="button" class="btn btn-outline">+ Bloquear data</button>
+      </div>
+      <div id="blockedDateChips" class="blocked-date-chips"><span class="muted">Nenhuma data bloqueada.</span></div>
+    </section>
+
+    <section class="settings-section card">
+      <div class="settings-section-head">
+        <div>
+          <span class="settings-step">05</span>
+          <h3>Regras do agendamento online</h3>
+          <p class="muted">Controle até onde o cliente pode reservar e com quanta antecedência.</p>
+        </div>
+      </div>
+      <div class="settings-toggle-row">
+        <div>
+          <strong>Agendamento online</strong>
+          <span class="muted">Quando desligado, nenhum novo horário será disponibilizado.</span>
+        </div>
+        <label class="switch-control">
+          <input id="bookingEnabled" name="bookingEnabled" type="checkbox">
+          <span></span>
+        </label>
+      </div>
+      <div class="settings-grid">
+        <div class="field">
+          <label>Permitir agendar até</label>
+          <div class="input-suffix"><input id="bookingAdvanceDays" name="bookingAdvanceDays" type="number" min="1" max="365" value="60"><span>dias</span></div>
+        </div>
+        <div class="field">
+          <label>Antecedência mínima</label>
+          <select id="bookingMinNotice" name="bookingMinNotice">
+            <option value="0">Sem antecedência mínima</option>
+            <option value="30">30 minutos</option>
+            <option value="60">1 hora</option>
+            <option value="120">2 horas</option>
+            <option value="180">3 horas</option>
+            <option value="360">6 horas</option>
+            <option value="720">12 horas</option>
+            <option value="1440">24 horas</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>Aviso para o cliente</label>
+          <textarea id="bookingNotice" name="bookingNotice" rows="3" maxlength="280" placeholder="Ex.: Chegue com 5 minutos de antecedência."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <div class="settings-save-bar">
+      <div>
+        <strong>Alterações na agenda</strong>
+        <span>As regras serão usadas imediatamente após salvar.</span>
+      </div>
+      <button type="submit" class="btn btn-primary">Salvar configurações</button>
+    </div>
+  </form>
+</section></main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/admin.js"></script></body></html>
