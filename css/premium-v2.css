@@ -138,3 +138,11 @@ body.public-page,body.booking-page{
   .service-media{height:190px}
   .section{padding:68px 0!important}
 }
+
+/* Calendário público V3 */
+.booking-page .flatpickr-calendar{background:#101214!important;border:1px solid rgba(214,168,79,.18)!important;box-shadow:0 24px 70px rgba(0,0,0,.42)!important;border-radius:16px!important}
+.booking-page .flatpickr-months,.booking-page .flatpickr-weekdays{background:#0d0f11!important}
+.booking-page .flatpickr-month,.booking-page .flatpickr-current-month,.booking-page .flatpickr-weekday{color:#eee8df!important;fill:#eee8df!important}
+.booking-page .flatpickr-day{color:#d3d6da!important;border-radius:9px!important}
+.booking-page .flatpickr-day.selected{background:linear-gradient(135deg,#f1d68c,#c2913e)!important;border-color:#d6a84f!important;color:#17100a!important;font-weight:900}
+.booking-page .flatpickr-day.today{border-color:#d6a84f!important}
