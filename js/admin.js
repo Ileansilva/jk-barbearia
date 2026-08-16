@@ -33,8 +33,8 @@ document.addEventListener("DOMContentLoaded",async()=>{
   $("#financeBarberSelect")?.addEventListener("change",()=>renderFinance());
   $("#financeDateFilter")?.addEventListener("change",()=>{if(getFinanceDate())clearFinanceMonth();renderFinance();});
   $("#financeMonthFilter")?.addEventListener("change",()=>{if(getFinanceMonth())clearFinanceDate();renderFinance();});
-  $("#financeYearFilter")?.addEventListener("change",()=>renderFinance());
-  $("#financePeriodFilter")?.addEventListener("change",()=>renderFinance());
+  $("#financeYearFilter")?.addEventListener("change",()=>{clearFinanceDate();clearFinanceMonth();renderFinance();});
+  $("#financePeriodFilter")?.addEventListener("change",()=>{clearFinanceDate();clearFinanceMonth();renderFinance();});
   $("#financeTodayFilterBtn")?.addEventListener("click",()=>{setFinanceDate(localDateISO());clearFinanceMonth();renderFinance();});
   $("#financeClearDateBtn")?.addEventListener("click",()=>{clearFinanceDate();renderFinance();});
   $("#barberPhotoFile")?.addEventListener("change",previewBarberPhoto);
@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
   const {data,error}=await sb.auth.getSession();
   if(error)console.error(error);
   session=data?.session||null;
-  if(session){showAdmin();await renderAll();}
+  if(session){showAdmin();await renderCurrentPage();}
 });
 
 async function login(e){
@@ -58,7 +58,7 @@ async function login(e){
   session=data.session;
   $("#loginError").textContent="";
   showAdmin();
-  await renderAll();
+  await renderCurrentPage();
 }
 
 function showAdmin(){$("#loginOverlay")?.classList.add("hidden");}
@@ -71,12 +71,25 @@ function switchPanel(id,btn){
   btn?.classList.add("active");
 }
 
-async function renderAll(){
-  const r=await Promise.allSettled([
-    renderKPIs(),renderBookings(),renderServicesAdmin(),renderBarbersAdmin(),renderFinance(),renderGalleryAdmin(),loadSettings()
-  ]);
-  r.forEach(x=>{if(x.status==="rejected")console.error(x.reason)});
+async function renderCurrentPage(){
+  const page=document.body.dataset.adminPage||"dashboard";
+  if(page==="barberProfile"){
+    const id=Number(new URLSearchParams(location.search).get("id"));
+    if(!id){location.href="barbeiros-admin.html";return;}
+    currentProfileBarberId=id;
+    const br=await sb.from("barbers").select("*").eq("id",id).single();
+    if(br.error||!br.data){adminToast("Barbeiro não encontrado.",true);return;}
+    barbers=[br.data];
+    fillBarberProfileHeader(br.data);
+    const d=$("#profileDate");if(d&&!d.value)d.value=localDateISO();
+    await renderBarberProfileDay();
+    return;
+  }
+  const tasks={dashboard:renderKPIs,appointments:renderBookings,services:renderServicesAdmin,barbers:renderBarbersAdmin,finance:renderFinance,gallery:renderGalleryAdmin,settings:loadSettings};
+  const task=tasks[page];
+  if(task)await task();
 }
+async function renderAll(){return renderCurrentPage();}
 
 async function renderKPIs(){
   const today=JK.todayISO(),month=today.slice(0,7);
@@ -84,18 +97,18 @@ async function renderKPIs(){
   if(error)return console.error(error);
 
   const valid=(data||[]).filter(x=>x.status!=="cancelado");
-  $("#kpiToday").textContent=valid.filter(x=>x.booking_date===today).length;
+  if($("#kpiToday"))$("#kpiToday").textContent=valid.filter(x=>x.booking_date===today).length;
   const monthList=valid.filter(x=>x.booking_date.startsWith(month));
-  $("#kpiMonth").textContent=monthList.length;
-  $("#kpiRevenue").textContent=JK.money(monthList.reduce((a,x)=>a+Number(x.price||0),0));
+  if($("#kpiMonth"))$("#kpiMonth").textContent=monthList.length;
+  if($("#kpiRevenue"))$("#kpiRevenue").textContent=JK.money(monthList.reduce((a,x)=>a+Number(x.price||0),0));
 
   const [svc,brb,gal]=await Promise.all([
     sb.from("services").select("*",{count:"exact",head:true}).eq("active",true),
     sb.from("barbers").select("*",{count:"exact",head:true}).eq("active",true),
     sb.from("gallery").select("*",{count:"exact",head:true}).eq("active",true)
   ]);
-  $("#kpiServices").textContent=svc.count||0;
-  $("#kpiBarbers").textContent=brb.count||0;
+  if($("#kpiServices"))$("#kpiServices").textContent=svc.count||0;
+  if($("#kpiBarbers"))$("#kpiBarbers").textContent=brb.count||0;
   if($("#kpiGallery"))$("#kpiGallery").textContent=gal.count||0;
 }
 
@@ -545,38 +558,15 @@ function syncFinanceBarberSelect(){
   sel.innerHTML='<option value="">Todos os barbeiros</option>'+barbers.map(b=>`<option value="${b.id}">${JK.esc(b.name)} — ${Number(b.commission_percent||0).toLocaleString("pt-BR",{maximumFractionDigits:2})}%</option>`).join("");
   if([...sel.options].some(o=>o.value===current))sel.value=current;
 }
-async function openBarberFinance(id){
-  const financeButton=document.querySelector('[data-panel="finance"]');
-  switchPanel("finance",financeButton);
-  syncFinanceBarberSelect();
-  const sel=$("#financeBarberSelect"); if(sel)sel.value=String(id);
-  await renderFinance();
-  window.scrollTo({top:0,behavior:"smooth"});
-}
+function openBarberFinance(id){location.href=`financeiro-admin.html?barber=${encodeURIComponent(id)}`;}
 
-function backToBarbers(){
-  const btn=document.querySelector('[data-panel="barbers"]');
-  switchPanel("barbers",btn);
-}
-async function openBarberProfile(id){
-  currentProfileBarberId=Number(id);
-  const barber=barbers.find(b=>Number(b.id)===Number(id)) || (await sb.from("barbers").select("*").eq("id",id).single()).data;
-  if(!barber)return adminToast("Barbeiro não encontrado.",true);
-  if(!barbers.find(b=>Number(b.id)===Number(id)))barbers.push(barber);
-
-  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
-  $("#barberProfile")?.classList.add("active");
-  document.querySelectorAll(".side-nav button").forEach(b=>b.classList.remove("active"));
-
+function backToBarbers(){location.href="barbeiros-admin.html";}
+function fillBarberProfileHeader(barber){
   $("#profileBarberName").textContent=barber.name||"Barbeiro";
   $("#profileBarberCommission").textContent=`Comissão atual: ${Number(barber.commission_percent||0).toLocaleString("pt-BR",{maximumFractionDigits:2})}%`;
-  const photo=$("#profileBarberPhoto");
-  photo.innerHTML=barber.photo_url?`<img src="${JK.esc(barber.photo_url)}" alt="Foto de ${JK.esc(barber.name)}">`:"<span>✂</span>";
-  const date=$("#profileDate");
-  if(date&&!date.value)date.value=localDateISO();
-  await renderBarberProfileDay();
-  window.scrollTo({top:0,behavior:"smooth"});
+  const photo=$("#profileBarberPhoto");if(photo)photo.innerHTML=barber.photo_url?`<img src="${JK.esc(barber.photo_url)}" alt="Foto de ${JK.esc(barber.name)}">`:"<span>✂</span>";
 }
+function openBarberProfile(id){location.href=`barbeiro-perfil.html?id=${encodeURIComponent(id)}`;}
 async function loadProfileBookings(){
   if(!currentProfileBarberId)return [];
   const {data,error}=await sb.from("bookings")
@@ -720,7 +710,7 @@ function renderMonthWeeks(base,monthValue){
     index++;
   }
   root.innerHTML=weeks.map(w=>`<article class="finance-week-card">
-    <div class="finance-week-title"><strong>Semana ${w.index}</strong><span>${new Date(w.from+"T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(w.to+"T12:00:00").toLocaleDateString("pt-BR")}</span></div>
+    <div class="finance-week-title"><strong class="week-number">Semana ${w.index}</strong><span class="week-range">${new Date(w.from+"T12:00:00").toLocaleDateString("pt-BR")} <b>até</b> ${new Date(w.to+"T12:00:00").toLocaleDateString("pt-BR")}</span></div>
     <div class="finance-week-stats">
       <div><small>Cortes</small><b>${w.stats.cuts}</b></div>
       <div><small>Faturado</small><b>${JK.money(w.stats.gross)}</b></div>
@@ -733,6 +723,21 @@ function financeBarberStatsForList(list,barberId){
   return financeStats(list.filter(b=>Number(b.barber_id)===Number(barberId)));
 }
 
+function monthNamePt(month){return new Intl.DateTimeFormat("pt-BR",{month:"long"}).format(new Date(`${month}-01T12:00:00`));}
+function renderProfessionalPeriodReport(custom,source){
+  const title=$("#financeReportTitle"),monthly=$("#financePeriodMonthlyGrid"),rows=$("#financePeriodBarberRows");
+  if(!title||!monthly||!rows)return;
+  title.textContent=`Relatório — ${custom.title}`;
+  const groups={};
+  custom.list.forEach(b=>{const key=completionDateISO(b).slice(0,7);(groups[key]??=[]).push(b);});
+  const months=Object.keys(groups).sort();
+  if(!months.length)monthly.innerHTML='<div class="empty">Nenhum corte concluído neste período.</div>';
+  else monthly.innerHTML=months.map(key=>{const s=financeStats(groups[key]);const label=monthNamePt(key);return `<article class="finance-month-report"><span>${label[0].toUpperCase()+label.slice(1)}</span><strong>${JK.money(s.gross)}</strong><div><small>${s.cuts} cortes</small><small>Comissões: ${JK.money(s.commission)}</small><small>Líquido: ${JK.money(s.net)}</small></div></article>`}).join("");
+  const barberList=barbers.length?barbers:[];
+  const active=barberList.map(br=>({br,stats:financeStats(custom.list.filter(b=>Number(b.barber_id)===Number(br.id)))})).filter(x=>x.stats.cuts>0);
+  rows.innerHTML=active.length?active.map(x=>`<tr><td><button class="finance-name-link" onclick="openBarberProfile(${x.br.id})">${x.br.photo_url?`<img src="${JK.esc(x.br.photo_url)}" alt="">`:""}<span>${JK.esc(x.br.name)}</span></button></td><td>${x.stats.cuts}</td><td>${JK.money(x.stats.gross)}</td><td>${JK.money(x.stats.commission)}</td><td>${JK.money(x.stats.net)}</td></tr>`).join(""):'<tr><td colspan="5"><div class="empty">Nenhum barbeiro com cortes concluídos neste período.</div></td></tr>';
+}
+
 async function renderFinance(){
   if(!$("#financeBarberCards"))return;
 
@@ -742,6 +747,8 @@ async function renderFinance(){
     barbers=br.data||[];
   }
   syncFinanceBarberSelect();
+  const queryBarber=new URLSearchParams(location.search).get("barber");
+  if(queryBarber&&$("#financeBarberSelect"))$("#financeBarberSelect").value=queryBarber;
 
   const {data,error}=await sb.from("bookings")
     .select("id,client_name,booking_date,booking_time,completed_at,service_name,price,status,barber_id,barber_name,barber_commission_percent,barber_commission_amount")
@@ -768,6 +775,7 @@ async function renderFinance(){
   const custom=customFinanceSelection(base);
   renderFinanceCustom(financeStats(custom.list),custom.title);
   renderMonthWeeks(base,getFinanceMonth());
+  renderProfessionalPeriodReport(custom,base);
 
   const selectedBarber=barbers.find(b=>String(b.id)===selected);
   $("#financeDetailTitle").textContent=selectedBarber

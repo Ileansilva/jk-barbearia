@@ -1,3 +1,17 @@
+function initBookingCalendar(){
+  if(typeof flatpickr!=="function")return;
+  if(flatpickr.l10ns?.pt)flatpickr.localize(flatpickr.l10ns.pt);
+  const el=document.querySelector("#date");
+  if(!el)return;
+  flatpickr(el,{
+    dateFormat:"Y-m-d",
+    altInput:true,
+    altFormat:"d/m/Y",
+    minDate:"today",
+    locale:"pt",
+    onChange:()=>el.dispatchEvent(new Event("change",{bubbles:true}))
+  });
+}
 let selectedTime="", settings=null, services=[], barbers=[];
 
 document.addEventListener("DOMContentLoaded", async ()=>{
