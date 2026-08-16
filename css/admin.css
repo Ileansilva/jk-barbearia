@@ -69,3 +69,123 @@
 .profile-summary-grid b{font-size:1rem;color:var(--gold2)}
 @media(max-width:950px){.barber-profile-header{grid-template-columns:1fr}.barber-profile-date{min-width:0}.profile-kpis{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:620px){.barber-photo-uploader,.barber-profile-identity{align-items:flex-start;flex-direction:column}.barber-photo-preview{width:96px;height:96px}.profile-barber-photo{width:112px;height:112px}.barber-profile-identity h2{font-size:1.7rem}.profile-kpis,.barber-profile-periods{grid-template-columns:1fr}.profile-summary-grid{grid-template-columns:1fr}.profile-summary-grid div{display:flex;justify-content:space-between;align-items:center}}
+
+
+/* Correção definitiva do card do barbeiro:
+   impede a regra antiga .service-admin img de transformar a foto em capa */
+.service-admin.barber-admin-card{
+  padding:20px;
+  border-radius:20px;
+  overflow:hidden;
+}
+.service-admin.barber-admin-card .barber-card-profile{
+  display:grid;
+  grid-template-columns:84px 1fr auto;
+  align-items:center;
+  gap:16px;
+  width:100%;
+  padding:0 0 18px;
+  border:0;
+  border-bottom:1px solid rgba(255,255,255,.07);
+  background:transparent;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.service-admin.barber-admin-card img.barber-card-photo{
+  width:84px !important;
+  height:84px !important;
+  min-width:84px !important;
+  max-width:84px !important;
+  aspect-ratio:1/1 !important;
+  object-fit:cover !important;
+  border-radius:50% !important;
+  margin:0 !important;
+  border:3px solid var(--gold) !important;
+  box-shadow:0 0 0 4px rgba(208,162,85,.10),0 12px 28px rgba(0,0,0,.35) !important;
+}
+.service-admin.barber-admin-card .barber-avatar{
+  width:84px;
+  height:84px;
+  min-width:84px;
+  margin:0;
+  border:3px solid var(--gold);
+  box-shadow:0 0 0 4px rgba(208,162,85,.10);
+}
+.service-admin.barber-admin-card .barber-card-info{
+  min-width:0;
+}
+.service-admin.barber-admin-card .barber-card-info strong{
+  display:block;
+  font-size:1.18rem;
+  line-height:1.2;
+  margin-bottom:6px;
+}
+.service-admin.barber-admin-card .barber-card-info small{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  color:var(--muted);
+  font-size:.84rem;
+}
+.service-admin.barber-admin-card .barber-card-info small:before{
+  content:"";
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#54b67a;
+  box-shadow:0 0 0 4px rgba(84,182,122,.10);
+}
+.service-admin.barber-admin-card .barber-commission-badge{
+  margin-top:16px;
+  padding:13px 15px;
+  border-radius:14px;
+}
+.service-admin.barber-admin-card .action-row{
+  margin-top:14px !important;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+}
+.service-admin.barber-admin-card .action-row .mini-btn{
+  width:100%;
+  min-height:40px;
+  white-space:nowrap;
+}
+.service-admin.barber-admin-card .action-row .mini-btn:first-child{
+  border-color:rgba(208,162,85,.40);
+  color:var(--gold2);
+  background:rgba(208,162,85,.08);
+}
+
+@media(max-width:760px){
+  .service-admin.barber-admin-card .barber-card-profile{
+    grid-template-columns:72px 1fr;
+  }
+  .service-admin.barber-admin-card img.barber-card-photo,
+  .service-admin.barber-admin-card .barber-avatar{
+    width:72px !important;
+    height:72px !important;
+    min-width:72px !important;
+    max-width:72px !important;
+  }
+  .service-admin.barber-admin-card .action-row{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:420px){
+  .service-admin.barber-admin-card{
+    padding:16px;
+  }
+  .service-admin.barber-admin-card .barber-card-profile{
+    grid-template-columns:64px 1fr;
+    gap:12px;
+  }
+  .service-admin.barber-admin-card img.barber-card-photo,
+  .service-admin.barber-admin-card .barber-avatar{
+    width:64px !important;
+    height:64px !important;
+    min-width:64px !important;
+    max-width:64px !important;
+  }
+}
