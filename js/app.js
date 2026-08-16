@@ -10,10 +10,19 @@ async function renderPublicServices(){
   root.innerHTML='<div class="empty" style="grid-column:1/-1">Carregando serviços...</div>';
   const {data,error}=await sb.from("services").select("*").eq("active",true).order("sort_order");
   if(error){root.innerHTML=`<div class="empty" style="grid-column:1/-1">Erro ao carregar serviços: ${JK.esc(error.message)}</div>`;return;}
-  root.innerHTML=data.map(s=>`<article class="service-card">
-    <img class="service-image" src="${s.image_url||'assets/corte-classico.svg'}" alt="${JK.esc(s.name)}">
-    <div class="service-body"><h3>${JK.esc(s.name)}</h3><p>${JK.esc(s.description||"")}</p>
-    <div class="price-row"><span class="price">${JK.money(s.price)}</span><a class="btn btn-outline" href="agendar.html?service=${s.id}">Agendar</a></div></div></article>`).join("");
+  root.innerHTML=data.map(s=>`<article class="service-card reveal-card">
+    <div class="service-media">
+      <img class="service-image" src="${s.image_url||'assets/corte-classico.svg'}" alt="${JK.esc(s.name)}" loading="lazy">
+      <span class="service-duration">${Number(s.duration_minutes||0)} min</span>
+      <span class="service-media-glow"></span>
+    </div>
+    <div class="service-body">
+      <div class="service-title-row"><h3>${JK.esc(s.name)}</h3><span class="price">${JK.money(s.price)}</span></div>
+      <p>${JK.esc(s.description||"")}</p>
+      <a class="service-book-link" href="agendar.html?service=${s.id}"><span>Agendar este serviço</span><b>→</b></a>
+    </div>
+  </article>`).join("");
+  observeRevealCards();
 }
 
 
@@ -40,3 +49,17 @@ function openGalleryLightbox(card){
 function closeGalleryLightbox(){const box=document.querySelector("#galleryLightbox");if(!box)return;box.classList.remove("open");box.setAttribute("aria-hidden","true");document.body.style.overflow="";}
 document.addEventListener("click",e=>{if(e.target.matches(".lightbox-close")||e.target.id==="galleryLightbox")closeGalleryLightbox();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeGalleryLightbox();});
+
+function observeRevealCards(){
+  const cards=document.querySelectorAll(".reveal-card:not(.revealed)");
+  if(!("IntersectionObserver" in window)){cards.forEach(c=>c.classList.add("revealed"));return;}
+  const obs=new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){entry.target.classList.add("revealed");obs.unobserve(entry.target);}
+    });
+  },{threshold:.12});
+  cards.forEach(c=>obs.observe(c));
+}
+window.addEventListener("scroll",()=>{
+  document.documentElement.style.setProperty("--scrollY",`${window.scrollY}px`);
+},{passive:true});
