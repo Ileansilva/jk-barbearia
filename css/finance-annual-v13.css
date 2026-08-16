@@ -1,0 +1,70 @@
+/*
+==========================================================
+JK BARBEARIA - FINANCEIRO ANUAL EXECUTIVO V13
+==========================================================
+Esta folha controla:
+- cards dos 12 meses do ano;
+- ranking anual por cortes;
+- ranking anual por faturamento;
+- atalhos clicáveis do faturamento anual.
+
+Para personalizar a cor principal, altere os tons dourados:
+#d6a84f, #f0c85a e rgba(214,168,79,...)
+==========================================================
+*/
+
+.finance-period-card-clickable{cursor:pointer;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
+.finance-period-card-clickable:hover,.finance-period-card-clickable:focus-visible{transform:translateY(-3px);border-color:rgba(214,168,79,.45)!important;box-shadow:0 16px 38px rgba(0,0,0,.24);outline:none}
+.finance-period-card-clickable:after{content:"Abrir relatório anual →";display:block;margin-top:10px;color:#d6a84f;font-size:.68rem;font-weight:850;letter-spacing:.02em}
+
+.finance-annual-dashboard{display:grid;gap:16px;margin-top:16px}
+.finance-annual-dashboard[hidden]{display:none!important}
+.finance-annual-head{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px!important;background:linear-gradient(135deg,rgba(214,168,79,.075),rgba(255,255,255,.02))}
+.finance-annual-head h2{margin:.35rem 0 0;font-size:1.65rem}
+.finance-annual-total{display:grid;gap:4px;text-align:right;min-width:220px;padding:14px 16px;border-radius:15px;border:1px solid rgba(214,168,79,.17);background:rgba(214,168,79,.04)}
+.finance-annual-total span,.finance-annual-total small{color:#90979f;font-size:.7rem}
+.finance-annual-total strong{color:#f1d68c;font-size:1.65rem}
+
+.finance-annual-months-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.finance-annual-month-card{display:grid;gap:13px;text-align:left;padding:16px;border:1px solid rgba(255,255,255,.075);border-radius:16px;background:linear-gradient(180deg,#111417,#0b0d0f);color:#ece8e1;cursor:pointer;transition:.2s ease;min-width:0}
+.finance-annual-month-card:hover,.finance-annual-month-card:focus-visible{transform:translateY(-3px);border-color:rgba(214,168,79,.38);box-shadow:0 15px 36px rgba(0,0,0,.22);outline:none}
+.finance-annual-month-card.current{border-color:rgba(214,168,79,.32);box-shadow:inset 0 0 0 1px rgba(214,168,79,.06)}
+.finance-annual-month-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.finance-annual-month-top span{font-weight:900;font-size:.92rem}
+.finance-annual-month-top small{padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.04);color:#91989f;font-size:.62rem;white-space:nowrap}
+.finance-annual-month-gross{font-size:1.35rem;color:#f3d98f;overflow:hidden;text-overflow:ellipsis}
+.finance-annual-month-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.finance-annual-month-metrics span{display:grid;gap:3px;padding:8px;border-radius:10px;background:rgba(255,255,255,.025);min-width:0}
+.finance-annual-month-metrics small{color:#7f8790;font-size:.58rem;text-transform:uppercase;letter-spacing:.05em}
+.finance-annual-month-metrics b{font-size:.74rem;overflow:hidden;text-overflow:ellipsis}
+.finance-annual-month-best{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid rgba(255,255,255,.055)}
+.finance-annual-month-best small{color:#8d959d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.finance-annual-month-best b{color:#d6a84f;font-size:.67rem;white-space:nowrap}
+
+.finance-annual-rankings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.finance-ranking-list{display:grid;gap:8px}
+.finance-ranking-row{display:grid;grid-template-columns:36px 44px minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;padding:10px;border:1px solid rgba(255,255,255,.06);border-radius:13px;background:#0c0f11;color:#ece8e1;text-align:left;cursor:pointer;transition:.2s ease}
+.finance-ranking-row:hover,.finance-ranking-row:focus-visible{border-color:rgba(214,168,79,.28);background:#111417;outline:none}
+.finance-ranking-position{display:grid;place-items:center;font-weight:950;color:#d8bd75;font-size:.88rem}
+.finance-ranking-row img,.finance-ranking-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;display:grid;place-items:center;border:1px solid rgba(214,168,79,.18);background:#15181a}
+.finance-ranking-name{display:grid;gap:3px;min-width:0}
+.finance-ranking-name strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.finance-ranking-name small{color:#858d95;font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.finance-ranking-value{display:grid;gap:3px;text-align:right}
+.finance-ranking-value small{color:#777f87;font-size:.56rem;text-transform:uppercase;letter-spacing:.06em}
+.finance-ranking-value strong{color:#f0cf79;white-space:nowrap}
+
+@media(max-width:1100px){
+  .finance-annual-months-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:850px){
+  .finance-annual-months-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .finance-annual-rankings{grid-template-columns:1fr}
+  .finance-annual-head{align-items:flex-start;flex-direction:column}
+  .finance-annual-total{text-align:left;width:100%;min-width:0}
+}
+@media(max-width:560px){
+  .finance-annual-months-grid{grid-template-columns:1fr}
+  .finance-ranking-row{grid-template-columns:30px 40px minmax(0,1fr)}
+  .finance-ranking-value{grid-column:3;text-align:left}
+}
