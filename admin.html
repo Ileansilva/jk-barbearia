@@ -111,7 +111,7 @@
     <div>
       <span class="eyebrow">Controle financeiro</span>
       <h2>Financeiro da barbearia</h2>
-      <p class="muted">Os cálculos consideram apenas agendamentos marcados como <strong>Concluído</strong>.</p>
+      <p class="muted">Somente cortes marcados como <strong>Concluído</strong> entram nos cálculos.</p>
     </div>
     <div class="finance-filter">
       <label for="financeBarberSelect">Ver barbeiro</label>
@@ -121,7 +121,38 @@
     </div>
   </div>
 
-  <div class="finance-period-grid">
+  <div class="finance-advanced-filters card">
+    <div class="finance-filter-group">
+      <label>Data específica</label>
+      <div class="finance-inline-filter">
+        <input id="financeDateFilter" type="date">
+        <button id="financeTodayFilterBtn" type="button" class="mini-btn">Hoje</button>
+        <button id="financeClearDateBtn" type="button" class="mini-btn">Limpar</button>
+      </div>
+    </div>
+    <div class="finance-filter-group">
+      <label>Mês</label>
+      <input id="financeMonthFilter" type="month">
+    </div>
+    <div class="finance-filter-group">
+      <label>Ano</label>
+      <select id="financeYearFilter"></select>
+    </div>
+    <div class="finance-filter-group">
+      <label>Período do ano</label>
+      <select id="financePeriodFilter">
+        <option value="year">Ano inteiro</option>
+        <option value="semester1">1º semestre — Jan a Jun</option>
+        <option value="semester2">2º semestre — Jul a Dez</option>
+        <option value="quarter1">1º trimestre — Jan a Mar</option>
+        <option value="quarter2">2º trimestre — Abr a Jun</option>
+        <option value="quarter3">3º trimestre — Jul a Set</option>
+        <option value="quarter4">4º trimestre — Out a Dez</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="finance-period-grid finance-period-grid-4">
     <article class="finance-period-card">
       <div class="finance-period-head"><span>Hoje</span><strong id="finTodayCuts">0 cortes</strong></div>
       <div class="finance-values">
@@ -146,13 +177,46 @@
         <div><small>Líquido da casa</small><b id="finMonthNet">R$ 0,00</b></div>
       </div>
     </article>
+    <article class="finance-period-card">
+      <div class="finance-period-head"><span>Este ano</span><strong id="finYearCuts">0 cortes</strong></div>
+      <div class="finance-values">
+        <div><small>Faturamento</small><b id="finYearGross">R$ 0,00</b></div>
+        <div><small>Comissões</small><b id="finYearCommission">R$ 0,00</b></div>
+        <div><small>Líquido da casa</small><b id="finYearNet">R$ 0,00</b></div>
+      </div>
+    </article>
+  </div>
+
+  <div class="card finance-custom-result-card">
+    <div class="card-head">
+      <div>
+        <span class="eyebrow">Consulta personalizada</span>
+        <h2 id="financeCustomTitle">Ano atual</h2>
+      </div>
+    </div>
+    <div class="finance-custom-kpis">
+      <div><span>Cortes</span><strong id="financeCustomCuts">0</strong></div>
+      <div><span>Faturamento</span><strong id="financeCustomGross">R$ 0,00</strong></div>
+      <div><span>Comissões</span><strong id="financeCustomCommission">R$ 0,00</strong></div>
+      <div><span>Lucro/Líquido da casa</span><strong id="financeCustomNet">R$ 0,00</strong></div>
+    </div>
+  </div>
+
+  <div id="financeWeeksCard" class="card">
+    <div class="card-head">
+      <div>
+        <h2 id="financeWeeksTitle">Faturamento por semana do mês</h2>
+        <p class="muted" style="margin:.35rem 0 0">Ao escolher um mês, o sistema divide automaticamente o resultado pelas semanas daquele mês.</p>
+      </div>
+    </div>
+    <div id="financeWeeksGrid" class="finance-weeks-grid"></div>
   </div>
 
   <div class="card">
     <div class="card-head">
       <div>
-        <h2 id="financeDetailTitle">Resumo por barbeiro — mês atual</h2>
-        <p class="muted" style="margin:.35rem 0 0">Clique em um barbeiro para abrir o desempenho individual.</p>
+        <h2 id="financeDetailTitle">Barbeiros — mês atual</h2>
+        <p class="muted" style="margin:.35rem 0 0">Clique em qualquer profissional para abrir o perfil individual completo.</p>
       </div>
     </div>
     <div id="financeBarberCards" class="finance-barber-grid"></div>
@@ -161,8 +225,8 @@
   <div class="card">
     <div class="card-head">
       <div>
-        <h2>Últimos cortes concluídos</h2>
-        <p class="muted" style="margin:.35rem 0 0">Valor do corte, porcentagem e comissão calculada.</p>
+        <h2 id="financeTableTitle">Cortes concluídos</h2>
+        <p class="muted" style="margin:.35rem 0 0">Valor do corte, porcentagem, comissão e valor que ficou para a barbearia.</p>
       </div>
     </div>
     <div class="table-wrap">
