@@ -1,0 +1,78 @@
+/* JK Barbearia — Admin V7
+   Melhora visibilidade dos calendários de data/mês no financeiro e no painel */
+
+/* Faz o navegador usar controles escuros com melhor contraste */
+.admin-body input[type="date"],
+.admin-body input[type="month"],
+.admin-body input[type="datetime-local"]{
+  color-scheme: dark;
+}
+
+/* Campos de data mais visíveis */
+.admin-body input[type="date"],
+.admin-body input[type="month"],
+.admin-body input[type="datetime-local"],
+.finance-filter-card input[type="date"],
+.finance-filter-card input[type="month"]{
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)) !important;
+  border: 1px solid rgba(214,168,79,.28) !important;
+  color: #f7f1e4 !important;
+  font-weight: 700 !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 0 0 1px rgba(214,168,79,.06);
+}
+
+.admin-body input[type="date"]:focus,
+.admin-body input[type="month"]:focus,
+.admin-body input[type="datetime-local"]:focus,
+.finance-filter-card input[type="date"]:focus,
+.finance-filter-card input[type="month"]:focus{
+  border-color: rgba(240,200,90,.82) !important;
+  box-shadow: 0 0 0 3px rgba(214,168,79,.14), inset 0 0 0 1px rgba(255,255,255,.04) !important;
+}
+
+/* Ícone do calendário mais visível no Chrome/Edge */
+.admin-body input[type="date"]::-webkit-calendar-picker-indicator,
+.admin-body input[type="month"]::-webkit-calendar-picker-indicator,
+.admin-body input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  opacity: 1 !important;
+  cursor: pointer;
+  filter: invert(88%) sepia(19%) saturate(1105%) hue-rotate(352deg) brightness(101%) contrast(93%);
+  background-color: rgba(214,168,79,.10);
+  border-radius: 8px;
+  padding: 6px;
+}
+
+/* Valor digitado mais legível */
+.admin-body input[type="date"]::-webkit-datetime-edit,
+.admin-body input[type="month"]::-webkit-datetime-edit,
+.admin-body input[type="datetime-local"]::-webkit-datetime-edit{
+  color: #f7f1e4;
+}
+.admin-body input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.admin-body input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.admin-body input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper{
+  color: #f7f1e4;
+}
+
+/* Placeholder e campos vazios */
+.admin-body input[type="date"]:invalid,
+.admin-body input[type="month"]:invalid{
+  color: #cfc5b1 !important;
+}
+
+/* Área do financeiro */
+.finance-filters-grid .filter-field,
+.finance-filter-board .finance-filter-card{
+  position: relative;
+}
+.finance-filter-board .finance-filter-card label,
+.finance-filters-grid .filter-field label{
+  color: #f0c85a !important;
+}
+
+/* Também melhora o campo de data do perfil individual do barbeiro */
+#profileDate{
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)) !important;
+  border: 1px solid rgba(214,168,79,.28) !important;
+  color: #f7f1e4 !important;
+}
