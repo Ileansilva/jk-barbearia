@@ -1,4 +1,4 @@
-let session=null, services=[], barbers=[], galleryItems=[];
+let session=null, services=[], barbers=[], galleryItems=[], financeBookings=[];
 const $=(s)=>document.querySelector(s);
 
 function adminToast(message,error=false){
@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
   $("#barberForm")?.addEventListener("submit",saveBarber);
   $("#galleryForm")?.addEventListener("submit",saveGalleryItem);
   $("#settingsForm")?.addEventListener("submit",saveSettings);
+  $("#financeBarberSelect")?.addEventListener("change",()=>renderFinance());
 
   const {data,error}=await sb.auth.getSession();
   if(error)console.error(error);
@@ -57,7 +58,7 @@ function switchPanel(id,btn){
 
 async function renderAll(){
   const r=await Promise.allSettled([
-    renderKPIs(),renderBookings(),renderServicesAdmin(),renderBarbersAdmin(),renderGalleryAdmin(),loadSettings()
+    renderKPIs(),renderBookings(),renderServicesAdmin(),renderBarbersAdmin(),renderFinance(),renderGalleryAdmin(),loadSettings()
   ]);
   r.forEach(x=>{if(x.status==="rejected")console.error(x.reason)});
 }
@@ -100,7 +101,7 @@ async function renderBookings(){
     <td><strong>${JK.esc(b.barber_name||"—")}</strong></td>
     <td>${JK.esc(b.service_name)}</td>
     <td>${new Date(b.booking_date+"T12:00:00").toLocaleDateString("pt-BR")}<br>${String(b.booking_time).slice(0,5)}</td>
-    <td>${JK.money(b.price)}</td>
+    <td>${JK.money(b.price)}${b.status==="concluido"&&b.barber_id?`<br><span class="muted">Comissão: ${JK.money(commissionForBooking(b))}</span>`:""}</td>
     <td><span class="status ${b.status}">${b.status}</span></td>
     <td>${JK.esc(b.notes||"—")}</td>
     <td><div class="action-row">
@@ -113,9 +114,21 @@ async function renderBookings(){
 }
 
 async function setStatus(id,status){
-  const {error}=await sb.from("bookings").update({status}).eq("id",id);
+  let payload={status};
+  if(status==="concluido"){
+    const {data:b,error:loadError}=await sb.from("bookings").select("id,price,barber_id,barber_commission_percent,barber_commission_amount").eq("id",id).single();
+    if(loadError)return adminToast("Erro ao carregar agendamento: "+loadError.message,true);
+    if(b?.barber_id&&(b.barber_commission_percent===null||b.barber_commission_amount===null)){
+      const cached=barbers.find(x=>Number(x.id)===Number(b.barber_id));
+      const br=cached || (await sb.from("barbers").select("*").eq("id",b.barber_id).single()).data;
+      const pct=Number(br?.commission_percent||0);
+      payload.barber_commission_percent=pct;
+      payload.barber_commission_amount=Number((Number(b.price||0)*pct/100).toFixed(2));
+    }
+  }
+  const {error}=await sb.from("bookings").update(payload).eq("id",id);
   if(error)return adminToast("Erro ao atualizar: "+error.message,true);
-  adminToast("Agendamento atualizado.");
+  adminToast(status==="concluido"?"Corte concluído e lançado no financeiro.":"Agendamento atualizado.");
   await renderAll();
 }
 
@@ -218,12 +231,15 @@ async function renderBarbersAdmin(){
   const {data,error}=await sb.from("barbers").select("*").order("sort_order").order("id");
   if(error){root.innerHTML='<div class="empty">Erro ao carregar barbeiros.</div>';console.error(error);return;}
   barbers=data||[];
-  if(!barbers.length){root.innerHTML='<div class="empty">Nenhum barbeiro cadastrado. Cadastre os 3 profissionais acima.</div>';return;}
-  root.innerHTML=barbers.map(b=>`<div class="service-admin">
-    <div style="width:76px;height:76px;border-radius:50%;display:grid;place-items:center;background:rgba(184,147,75,.12);border:1px solid rgba(184,147,75,.35);font-size:1.5rem;font-weight:800;margin-bottom:14px">✂</div>
+  syncFinanceBarberSelect();
+  if(!barbers.length){root.innerHTML='<div class="empty">Nenhum barbeiro cadastrado. Cadastre os profissionais acima.</div>';return;}
+  root.innerHTML=barbers.map(b=>`<div class="service-admin barber-admin-card">
+    <div class="barber-avatar">✂</div>
     <strong>${JK.esc(b.name)}</strong>
     <p class="muted">${b.active?"Disponível para agendamentos":"Inativo no agendamento"}</p>
+    <div class="barber-commission-badge"><span>Comissão</span><strong>${Number(b.commission_percent||0).toLocaleString("pt-BR",{minimumFractionDigits:0,maximumFractionDigits:2})}%</strong></div>
     <div class="action-row" style="margin-top:14px">
+      <button type="button" class="mini-btn" onclick="openBarberFinance(${b.id})">Ver financeiro</button>
       <button type="button" class="mini-btn" onclick="editBarber(${b.id})">Editar</button>
       <button type="button" class="mini-btn" onclick="toggleBarber(${b.id},${!b.active})">${b.active?"Desativar":"Ativar"}</button>
       <button type="button" class="mini-btn" onclick="removeBarber(${b.id})">Excluir</button>
@@ -241,16 +257,37 @@ async function saveBarber(e){
   const id=String(f.get("id")||"").trim();
   const name=String(f.get("name")||"").trim();
   const sort_order=Number(f.get("sort_order")||0);
+  const commission_percent=Number(f.get("commission_percent"));
   if(name.length<2)return adminToast("Informe o nome do barbeiro.",true);
+  if(!Number.isFinite(commission_percent)||commission_percent<0||commission_percent>100)return adminToast("Informe uma comissão entre 0% e 100%.",true);
   if(btn){btn.disabled=true;btn.textContent="Salvando...";}
   try{
+    const payload={name,sort_order,commission_percent};
     const result=id
-      ? await sb.from("barbers").update({name,sort_order}).eq("id",Number(id)).select().single()
-      : await sb.from("barbers").insert({name,sort_order,active:true}).select().single();
+      ? await sb.from("barbers").update(payload).eq("id",Number(id)).select().single()
+      : await sb.from("barbers").insert({...payload,active:true}).select().single();
     if(result.error)throw result.error;
-    form.reset();$("#barberId").value="";$("#barberSort").value="0";
-    adminToast(id?"Barbeiro atualizado com sucesso.":"Barbeiro cadastrado com sucesso.");
-    await renderBarbersAdmin();await renderKPIs();
+
+    if(id){
+      const {data:pending,error:pendingError}=await sb.from("bookings")
+        .select("id,price,status")
+        .eq("barber_id",Number(id))
+        .neq("status","concluido")
+        .neq("status","cancelado");
+      if(pendingError)throw pendingError;
+      for(const b of pending||[]){
+        const amount=Number((Number(b.price||0)*commission_percent/100).toFixed(2));
+        const {error:updateError}=await sb.from("bookings").update({
+          barber_commission_percent:commission_percent,
+          barber_commission_amount:amount
+        }).eq("id",b.id);
+        if(updateError)throw updateError;
+      }
+    }
+
+    form.reset();$("#barberId").value="";$("#barberSort").value="0";$("#barberCommission").value="0";
+    adminToast(id?"Barbeiro e comissão atualizados com sucesso.":"Barbeiro cadastrado com sucesso.");
+    await renderBarbersAdmin();await renderFinance();await renderKPIs();
   }catch(err){console.error(err);adminToast("Erro ao salvar barbeiro: "+(err?.message||"erro desconhecido"),true);}
   finally{if(btn){btn.disabled=false;btn.textContent=original;}}
 }
@@ -258,7 +295,7 @@ async function saveBarber(e){
 function editBarber(id){
   const b=barbers.find(x=>Number(x.id)===Number(id));
   if(!b)return adminToast("Barbeiro não encontrado.",true);
-  $("#barberId").value=b.id;$("#barberName").value=b.name||"";$("#barberSort").value=b.sort_order??0;
+  $("#barberId").value=b.id;$("#barberName").value=b.name||"";$("#barberCommission").value=Number(b.commission_percent||0);$("#barberSort").value=b.sort_order??0;
   $("#barberForm").scrollIntoView({behavior:"smooth",block:"start"});
   setTimeout(()=>$("#barberName")?.focus(),250);
   adminToast("Barbeiro carregado para edição.");
@@ -279,6 +316,129 @@ async function removeBarber(id){
   await renderBarbersAdmin();await renderKPIs();
 }
 
+
+
+function localDateISO(d=new Date()){
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function weekStartISO(){
+  const d=new Date(); d.setHours(12,0,0,0);
+  const dow=d.getDay(),diff=dow===0?-6:1-dow;
+  d.setDate(d.getDate()+diff);
+  return localDateISO(d);
+}
+function monthStartISO(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`;
+}
+function commissionForBooking(b){
+  if(b.barber_commission_amount!==null&&b.barber_commission_amount!==undefined)return Number(b.barber_commission_amount||0);
+  const pct=b.barber_commission_percent!==null&&b.barber_commission_percent!==undefined
+    ? Number(b.barber_commission_percent||0)
+    : Number(barbers.find(x=>Number(x.id)===Number(b.barber_id))?.commission_percent||0);
+  return Number((Number(b.price||0)*pct/100).toFixed(2));
+}
+function percentForBooking(b){
+  if(b.barber_commission_percent!==null&&b.barber_commission_percent!==undefined)return Number(b.barber_commission_percent||0);
+  return Number(barbers.find(x=>Number(x.id)===Number(b.barber_id))?.commission_percent||0);
+}
+function financeStats(list){
+  const gross=list.reduce((a,b)=>a+Number(b.price||0),0);
+  const commission=list.reduce((a,b)=>a+commissionForBooking(b),0);
+  return {cuts:list.length,gross,commission,net:gross-commission};
+}
+function setFinancePeriod(prefix,stats){
+  const cap=prefix[0].toUpperCase()+prefix.slice(1);
+  $(`#fin${cap}Cuts`).textContent=`${stats.cuts} ${stats.cuts===1?"corte":"cortes"}`;
+  $(`#fin${cap}Gross`).textContent=JK.money(stats.gross);
+  $(`#fin${cap}Commission`).textContent=JK.money(stats.commission);
+  $(`#fin${cap}Net`).textContent=JK.money(stats.net);
+}
+function syncFinanceBarberSelect(){
+  const sel=$("#financeBarberSelect"); if(!sel)return;
+  const current=sel.value;
+  sel.innerHTML='<option value="">Todos os barbeiros</option>'+barbers.map(b=>`<option value="${b.id}">${JK.esc(b.name)} — ${Number(b.commission_percent||0).toLocaleString("pt-BR",{maximumFractionDigits:2})}%</option>`).join("");
+  if([...sel.options].some(o=>o.value===current))sel.value=current;
+}
+async function openBarberFinance(id){
+  const financeButton=document.querySelector('[data-panel="finance"]');
+  switchPanel("finance",financeButton);
+  syncFinanceBarberSelect();
+  const sel=$("#financeBarberSelect"); if(sel)sel.value=String(id);
+  await renderFinance();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+async function renderFinance(){
+  if(!$("#financeBarberCards"))return;
+
+  if(!barbers.length){
+    const br=await sb.from("barbers").select("*").order("sort_order").order("id");
+    if(!br.error)barbers=br.data||[];
+  }
+  syncFinanceBarberSelect();
+
+  const {data,error}=await sb.from("bookings")
+    .select("id,booking_date,booking_time,service_name,price,status,barber_id,barber_name,barber_commission_percent,barber_commission_amount")
+    .eq("status","concluido")
+    .order("booking_date",{ascending:false})
+    .order("booking_time",{ascending:false});
+  if(error){
+    console.error(error);
+    $("#financeBarberCards").innerHTML='<div class="empty">Erro ao carregar dados financeiros.</div>';
+    return;
+  }
+  financeBookings=data||[];
+
+  const selected=$("#financeBarberSelect")?.value||"";
+  const base=selected?financeBookings.filter(b=>String(b.barber_id)===selected):financeBookings;
+  const today=localDateISO(),week=weekStartISO(),month=monthStartISO();
+  setFinancePeriod("today",financeStats(base.filter(b=>b.booking_date===today)));
+  setFinancePeriod("week",financeStats(base.filter(b=>b.booking_date>=week&&b.booking_date<=today)));
+  setFinancePeriod("month",financeStats(base.filter(b=>b.booking_date>=month&&b.booking_date<=today)));
+
+  const selectedBarber=barbers.find(b=>String(b.id)===selected);
+  $("#financeDetailTitle").textContent=selectedBarber?`${selectedBarber.name} — desempenho no mês atual`:"Resumo por barbeiro — mês atual";
+
+  const monthBookings=financeBookings.filter(b=>b.booking_date>=month&&b.booking_date<=today);
+  const cardsRoot=$("#financeBarberCards");
+  const cardsBarbers=selectedBarber?[selectedBarber]:barbers;
+  if(!cardsBarbers.length){
+    cardsRoot.innerHTML='<div class="empty">Nenhum barbeiro cadastrado.</div>';
+  }else{
+    cardsRoot.innerHTML=cardsBarbers.map(br=>{
+      const list=monthBookings.filter(b=>Number(b.barber_id)===Number(br.id));
+      const st=financeStats(list);
+      return `<button type="button" class="finance-barber-card" onclick="openBarberFinance(${br.id})">
+        <div class="finance-barber-top"><span class="barber-avatar small">✂</span><div><strong>${JK.esc(br.name)}</strong><small>${Number(br.commission_percent||0).toLocaleString("pt-BR",{maximumFractionDigits:2})}% de comissão</small></div></div>
+        <div class="finance-barber-numbers">
+          <div><span>Cortes</span><b>${st.cuts}</b></div>
+          <div><span>Produziu</span><b>${JK.money(st.gross)}</b></div>
+          <div><span>Recebe</span><b>${JK.money(st.commission)}</b></div>
+        </div>
+      </button>`;
+    }).join("");
+  }
+
+  const rows=$("#financeRows");
+  const rowList=base.slice(0,80);
+  if(!rowList.length){
+    rows.innerHTML='<tr><td colspan="7"><div class="empty">Nenhum corte concluído neste filtro.</div></td></tr>';
+  }else{
+    rows.innerHTML=rowList.map(b=>{
+      const commission=commissionForBooking(b),price=Number(b.price||0),pct=percentForBooking(b);
+      return `<tr>
+        <td>${new Date(b.booking_date+"T12:00:00").toLocaleDateString("pt-BR")}<br><span class="muted">${String(b.booking_time||"").slice(0,5)}</span></td>
+        <td><strong>${JK.esc(b.barber_name||"—")}</strong></td>
+        <td>${JK.esc(b.service_name||"—")}</td>
+        <td>${JK.money(price)}</td>
+        <td>${pct.toLocaleString("pt-BR",{maximumFractionDigits:2})}%</td>
+        <td><strong>${JK.money(commission)}</strong></td>
+        <td>${JK.money(price-commission)}</td>
+      </tr>`;
+    }).join("");
+  }
+}
 
 async function renderGalleryAdmin(){
   const root=$("#galleryAdminGrid"); if(!root)return;
