@@ -161,21 +161,23 @@ async function renderServicesAdmin(){
   const {data,error}=await sb.from("services").select("*").order("sort_order").order("id");
   if(error){root.innerHTML='<div class="empty">Erro ao carregar serviços.</div>';console.error(error);return;}
   services=data||[];
-  root.innerHTML=services.map(s=>`<div class="service-admin service-admin-item">
+  root.innerHTML=services.map(s=>`<article class="service-admin service-admin-item">
     <div class="service-admin-image-wrap">
       <img class="service-admin-image" src="${s.image_url||'assets/corte-classico.svg'}" alt="${JK.esc(s.name||"Serviço")}">
+      <span class="service-admin-duration">${Number(s.duration_minutes||0)} min</span>
     </div>
-    <strong>${JK.esc(s.name)}</strong>
-    <p class="muted">${JK.esc(s.description||"")}</p>
-    <div class="price-row"><span class="price">${JK.money(s.price)}</span><span>${s.duration_minutes} min</span></div>
-    <div class="action-row" style="margin-top:14px">
-      <button type="button" class="mini-btn" onclick="editService(${s.id})">Editar</button>
-      <button type="button" class="mini-btn" onclick="toggleService(${s.id},${!s.active})">${s.active?"Desativar":"Ativar"}</button>
-      <button type="button" class="mini-btn" onclick="removeService(${s.id})">Excluir</button>
+    <div class="service-admin-content">
+      <div class="service-admin-heading"><strong>${JK.esc(s.name)}</strong><span class="price">${JK.money(s.price)}</span></div>
+      <p class="muted">${JK.esc(s.description||"Sem descrição")}</p>
+      <div class="service-admin-status"><i class="${s.active?"on":"off"}"></i>${s.active?"Serviço ativo":"Serviço inativo"}</div>
+      <div class="action-row">
+        <button type="button" class="mini-btn primary-mini" onclick="editService(${s.id})">Editar</button>
+        <button type="button" class="mini-btn" onclick="toggleService(${s.id},${!s.active})">${s.active?"Desativar":"Ativar"}</button>
+        <button type="button" class="mini-btn danger-mini" onclick="removeService(${s.id})">Excluir</button>
+      </div>
     </div>
-  </div>`).join("");
+  </article>`).join("");
 }
-
 
 function loadServiceCropImage(e){
   const file=e.target.files?.[0];
@@ -208,6 +210,8 @@ function updateServiceCropFromControls(){
   $("#serviceCropZoomValue").textContent=`${serviceCropState.zoom}%`;
   $("#serviceCropXValue").textContent=serviceCropState.x;
   $("#serviceCropYValue").textContent=serviceCropState.y;
+  const status=$("#serviceCropStatus");
+  if(status)status.textContent="✓ Ajuste aplicado na prévia — será salvo exatamente neste enquadramento.";
   drawServiceCropPreview();
 }
 function resetServiceCropControls(){
@@ -238,12 +242,12 @@ function drawServiceCrop(canvas,width,height){
 function drawServiceCropPreview(){
   const canvas=$("#serviceCropCanvas");
   if(!canvas||!serviceCropState.img)return;
-  drawServiceCrop(canvas,720,495);
+  drawServiceCrop(canvas,800,500);
 }
 async function buildCroppedServiceFile(){
   if(!serviceCropState.img||!serviceCropState.file)return null;
   const canvas=document.createElement("canvas");
-  drawServiceCrop(canvas,1200,825);
+  drawServiceCrop(canvas,1200,750);
   const blob=await new Promise((resolve,reject)=>{
     canvas.toBlob(b=>b?resolve(b):reject(new Error("Não foi possível processar a imagem.")),"image/jpeg",0.9);
   });
@@ -255,6 +259,8 @@ function clearServiceCrop(){
   const editor=$("#serviceCropEditor"); if(editor)editor.hidden=true;
   const z=$("#serviceCropZoom"),x=$("#serviceCropX"),y=$("#serviceCropY");
   if(z)z.value="100"; if(x)x.value="0"; if(y)y.value="0";
+  const status=$("#serviceCropStatus");
+  if(status)status.textContent="✓ O que aparece dentro do quadro será salvo exatamente assim.";
 }
 
 async function uploadImage(file){
@@ -293,9 +299,23 @@ async function saveService(e){
       ? await sb.from("services").update(payload).eq("id",Number(id)).select().single()
       : await sb.from("services").insert({...payload,active:true}).select().single();
     if(result.error)throw result.error;
-    form.reset();$("#serviceId").value="";$("#serviceSort").value="0";clearServiceCrop();
-    adminToast(id?"Serviço atualizado com sucesso.":"Serviço salvo com sucesso.");
-    await renderServicesAdmin();await renderKPIs();
+
+    // Confirma visualmente que a imagem processada foi realmente salva.
+    if(uploaded && result.data?.image_url!==uploaded){
+      const retry=await sb.from("services").update({image_url:uploaded}).eq("id",result.data.id).select().single();
+      if(retry.error)throw retry.error;
+    }
+
+    form.reset();
+    $("#serviceId").value="";
+    $("#serviceSort").value="0";
+    $("#serviceImage").value="";
+    clearServiceCrop();
+    adminToast(uploaded
+      ? "Serviço salvo. A imagem foi recortada e atualizada com sucesso."
+      : (id?"Serviço atualizado com sucesso.":"Serviço salvo com sucesso."));
+    await renderServicesAdmin();
+    await renderKPIs();
   }catch(err){console.error(err);adminToast("Erro ao salvar: "+(err?.message||"erro desconhecido"),true);}
   finally{if(btn){btn.disabled=false;btn.textContent=original;}}
 }
