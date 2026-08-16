@@ -1,0 +1,140 @@
+
+:root{
+  --jk-bg:#070809;
+  --jk-surface:#0d0f11;
+  --jk-surface2:#121519;
+  --jk-gold:#d6a84f;
+  --jk-gold2:#f4d88a;
+  --jk-text:#f7f4ef;
+  --jk-muted:#9ca1a8;
+  --jk-line:rgba(244,216,138,.14);
+  --jk-glass:rgba(17,19,22,.72);
+  --jk-glow:0 0 70px rgba(214,168,79,.12);
+}
+body.public-page,body.booking-page{
+  background:
+    radial-gradient(circle at 10% 0%,rgba(214,168,79,.09),transparent 28rem),
+    radial-gradient(circle at 88% 20%,rgba(84,112,255,.045),transparent 24rem),
+    linear-gradient(180deg,#08090a,#050607 75%);
+  min-height:100vh;
+}
+.site-ambient{position:fixed;inset:0;pointer-events:none;z-index:-1;overflow:hidden}
+.site-ambient i{position:absolute;border-radius:50%;filter:blur(90px);opacity:.12;animation:ambientFloat 16s ease-in-out infinite alternate}
+.site-ambient i:nth-child(1){width:320px;height:320px;background:#d6a84f;left:-100px;top:12%}
+.site-ambient i:nth-child(2){width:260px;height:260px;background:#516cff;right:-80px;top:40%;animation-delay:-5s}
+.site-ambient i:nth-child(3){width:220px;height:220px;background:#d6a84f;left:45%;bottom:-100px;animation-delay:-9s}
+@keyframes ambientFloat{to{transform:translate3d(30px,-25px,0) scale(1.1)}}
+.header{
+  background:rgba(7,8,9,.68)!important;
+  border-bottom:1px solid rgba(255,255,255,.055)!important;
+  box-shadow:0 10px 40px rgba(0,0,0,.18);
+}
+.nav{height:82px!important}
+.brand img{width:72px!important;height:72px!important;filter:drop-shadow(0 10px 28px rgba(214,168,79,.18))!important}
+.navlinks{gap:8px!important}
+.navlinks>a:not(.btn){padding:10px 13px;border-radius:12px;transition:.2s ease}
+.navlinks>a:not(.btn):hover{background:rgba(255,255,255,.035);color:var(--jk-gold2)!important}
+.btn{transition:.25s ease!important}
+.btn-primary{
+  background:linear-gradient(135deg,#f5dc91 0%,#d6a84f 55%,#a87327 100%)!important;
+  box-shadow:0 14px 34px rgba(214,168,79,.18),inset 0 1px rgba(255,255,255,.35)!important;
+}
+.btn-shine{position:relative;overflow:hidden}
+.btn-shine:after{content:"";position:absolute;inset:-50% auto -50% -30%;width:25%;background:rgba(255,255,255,.45);transform:skewX(-18deg);animation:buttonShine 4.5s ease-in-out infinite}
+@keyframes buttonShine{0%,70%{left:-35%}100%{left:130%}}
+.hero{min-height:calc(100svh - 82px)!important}
+.hero-grid{grid-template-columns:1.02fr .98fr!important;gap:64px!important}
+.hero-copy h1{font-size:clamp(3.2rem,7vw,6.8rem)!important;letter-spacing:-.065em!important;text-wrap:balance}
+.hero-copy p{max-width:610px!important}
+.hero-live-pill,.booking-secure{
+  display:inline-flex;align-items:center;gap:8px;margin-top:18px;
+  padding:8px 11px;border:1px solid rgba(84,182,122,.22);border-radius:999px;
+  background:rgba(84,182,122,.055);font-size:.76rem;color:#b9d9c5
+}
+.hero-live-pill b{width:7px;height:7px;border-radius:50%;background:#54b67a;box-shadow:0 0 0 5px rgba(84,182,122,.1);animation:livePulse 1.8s ease infinite}
+@keyframes livePulse{50%{box-shadow:0 0 0 9px rgba(84,182,122,0)}}
+.hero-trust{display:flex;gap:14px 20px;flex-wrap:wrap;margin-top:24px;color:#9ea3a9;font-size:.8rem}
+.hero-card{
+  border-radius:32px!important;
+  border:1px solid rgba(244,216,138,.14)!important;
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.035),transparent 50%),
+    radial-gradient(circle at 50% 46%,rgba(214,168,79,.16),transparent 44%),
+    #0c0e10!important;
+  box-shadow:0 40px 100px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.045)!important;
+}
+.hero-card:before{animation:ringSpin 18s linear infinite}
+.hero-card:after{animation:ringSpin 12s linear infinite reverse}
+@keyframes ringSpin{to{transform:rotate(360deg)}}
+.hero-logo{width:min(72%,350px)!important}
+.badge{background:rgba(8,9,10,.74)!important;border-color:rgba(244,216,138,.13)!important;box-shadow:0 18px 45px rgba(0,0,0,.28)!important}
+.premium-stats{background:rgba(255,255,255,.012);border-color:rgba(255,255,255,.055)!important}
+.premium-stats .stat{position:relative;padding:24px 16px!important;border-color:rgba(255,255,255,.055)!important}
+.premium-stats .stat strong{font-size:.78rem!important;color:var(--jk-gold2);letter-spacing:.12em}
+.premium-stats .stat span{font-size:.88rem!important}
+.section{padding:96px 0!important}
+.section-head{max-width:720px!important}
+.title{font-size:clamp(2.25rem,4.7vw,4.4rem)!important}
+.services{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:20px!important}
+.service-card{
+  position:relative;
+  border-radius:24px!important;
+  border:1px solid rgba(255,255,255,.075)!important;
+  background:linear-gradient(180deg,rgba(18,21,25,.96),rgba(10,12,14,.98))!important;
+  box-shadow:0 18px 50px rgba(0,0,0,.22)!important;
+  overflow:hidden;
+  transform:translateY(18px);
+  opacity:0;
+  transition:opacity .6s ease,transform .6s ease,border-color .3s ease,box-shadow .3s ease!important;
+}
+.service-card.revealed{transform:none;opacity:1}
+.service-card:hover{transform:translateY(-6px)!important;border-color:rgba(214,168,79,.38)!important;box-shadow:0 28px 70px rgba(0,0,0,.32),0 0 0 1px rgba(214,168,79,.08)!important}
+.service-media{position:relative;height:205px;overflow:hidden;background:#0b0c0d}
+.service-media .service-image{width:100%!important;height:100%!important;aspect-ratio:auto!important;object-fit:cover!important;display:block;transition:transform .6s cubic-bezier(.2,.8,.2,1),filter .4s ease}
+.service-card:hover .service-image{transform:scale(1.045);filter:saturate(1.05) contrast(1.02)}
+.service-duration{position:absolute;top:13px;right:13px;padding:7px 9px;border-radius:999px;background:rgba(7,8,9,.78);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(12px);font-size:.72rem;font-weight:800}
+.service-media-glow{position:absolute;inset:auto 0 0;height:45%;background:linear-gradient(transparent,rgba(7,8,9,.72));pointer-events:none}
+.service-body{padding:18px!important}
+.service-title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.service-title-row h3{font-size:1.05rem;margin:0!important}
+.service-title-row .price{white-space:nowrap;font-size:1.03rem!important}
+.service-body p{min-height:42px;margin:10px 0 14px!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.service-book-link{display:flex;align-items:center;justify-content:space-between;padding-top:13px;border-top:1px solid rgba(255,255,255,.065);font-size:.82rem;font-weight:800;color:#d9d4cb}
+.service-book-link b{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:rgba(214,168,79,.09);color:var(--jk-gold2);transition:.25s ease}
+.service-book-link:hover b{transform:translateX(3px);background:rgba(214,168,79,.18)}
+.gallery-section{background:linear-gradient(180deg,transparent,rgba(214,168,79,.025),transparent)!important}
+.gallery-card{border-color:rgba(255,255,255,.07)!important;box-shadow:0 20px 55px rgba(0,0,0,.2)!important}
+.about-card,.cta{border-color:rgba(255,255,255,.07)!important;background-color:#0d0f11!important}
+.cta{box-shadow:0 24px 70px rgba(0,0,0,.25)}
+.footer{border-color:rgba(255,255,255,.06)!important}
+.form-shell{gap:22px!important}
+.form-card{
+  border:1px solid rgba(255,255,255,.075)!important;
+  background:rgba(13,15,17,.88)!important;
+  backdrop-filter:blur(18px);
+  border-radius:24px!important;
+  box-shadow:0 28px 80px rgba(0,0,0,.26)!important;
+}
+.booking-title{font-size:clamp(2.1rem,4vw,3rem);line-height:1;margin:13px 0!important}
+.field input,.field select,.field textarea{
+  background:#090b0c!important;
+  border-color:rgba(255,255,255,.085)!important;
+  transition:border-color .2s ease,box-shadow .2s ease,background .2s ease
+}
+.field input:focus,.field select:focus,.field textarea:focus{background:#0b0d0f!important;border-color:rgba(214,168,79,.65)!important}
+.booking-barber-card{background:#0a0c0e!important;border-color:rgba(255,255,255,.08)!important}
+.booking-barber-card.active{box-shadow:0 0 0 1px rgba(214,168,79,.3),0 12px 30px rgba(0,0,0,.25)}
+@media(max-width:980px){
+  .services{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .hero-grid{gap:38px!important}
+}
+@media(max-width:620px){
+  .nav{height:70px!important}
+  .brand img{width:58px!important;height:58px!important}
+  .hero-grid{padding:46px 0!important}
+  .hero-copy h1{font-size:clamp(2.8rem,15vw,4.4rem)!important}
+  .hero-trust{display:grid;gap:8px}
+  .services{grid-template-columns:1fr!important}
+  .service-media{height:190px}
+  .section{padding:68px 0!important}
+}
