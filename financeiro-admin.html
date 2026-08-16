@@ -1,4 +1,12 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Financeiro | JK Barbearia</title><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/admin.css"><link rel="stylesheet" href="css/admin-v2.css"><link rel="stylesheet" href="css/admin-v3.css"><link rel="stylesheet" href="css/admin-v5.css"><link rel="stylesheet" href="css/admin-v6.css"><link rel="stylesheet" href="css/admin-v7.css"><link rel="stylesheet" href="css/admin-v8.css"></head><body class="admin-body admin-multipage" data-admin-page="finance"><div class="admin-ambient" aria-hidden="true"></div><div id="loginOverlay" class="login-overlay"><form id="loginForm" class="login-card"><img src="assets/jk-logo.png" alt="Logo JK Barbearia"><h1>Área do proprietário</h1><p>Acesse a administração da JK Barbearia.</p><div class="field"><label>E-mail</label><input name="email" type="email" required></div><div class="field" style="margin-top:12px"><label>Senha</label><input name="password" type="password" required></div><div id="loginError" style="color:#ff9c9c;margin-top:9px"></div><button class="btn btn-primary" type="submit">Entrar</button></form></div><div class="admin-wrap"><aside class="sidebar"><a class="admin-sidebar-logo" href="admin.html"><img src="assets/jk-logo.png" alt="JK Barbearia"></a><nav class="side-nav side-nav-links"><a class="side-link " href="admin.html"><span>⌂</span>Visão geral</a><a class="side-link " href="agendamentos-admin.html"><span>▣</span>Agendamentos</a><a class="side-link " href="servicos-admin.html"><span>✂</span>Serviços</a><a class="side-link " href="barbeiros-admin.html"><span>♙</span>Barbeiros</a><a class="side-link active" href="financeiro-admin.html"><span>$</span>Financeiro</a><a class="side-link " href="galeria-admin.html"><span>▧</span>Galeria</a><a class="side-link " href="configuracoes-admin.html"><span>⚙</span>Configurações</a></nav><div class="sidebar-bottom"><a class="side-link" href="index.html"><span>↗</span>Ver site</a><button id="logout" class="side-link side-button"><span>⇥</span>Sair</button></div></aside><main class="admin-main"><div class="admin-top"><div class="admin-page-heading"><span class="eyebrow">Painel administrativo</span><h1>Financeiro</h1></div><div class="admin-top-actions"><a class="btn btn-outline" href="index.html">Ver site</a></div></div><section id="finance" class="panel active">
+<!DOCTYPE html><html lang="pt-BR"><head>
+<!-- ===== CABEÇALHO / CONFIGURAÇÕES DA PÁGINA ===== --><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Financeiro | JK Barbearia</title><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/admin.css"><link rel="stylesheet" href="css/admin-v2.css"><link rel="stylesheet" href="css/admin-v3.css"><link rel="stylesheet" href="css/admin-v5.css"><link rel="stylesheet" href="css/admin-v6.css"><link rel="stylesheet" href="css/admin-v7.css"><link rel="stylesheet" href="css/admin-v8.css"><link rel="stylesheet" href="css/finance-annual-v13.css"></head><body class="admin-body admin-multipage" data-admin-page="finance">
+<!-- ===== INÍCIO DO CONTEÚDO VISÍVEL ===== --><div class="admin-ambient" aria-hidden="true"></div><!-- ===== LOGIN DO PROPRIETÁRIO ===== -->
+<div id="loginOverlay" class="login-overlay"><form id="loginForm" class="login-card"><img src="assets/jk-logo.png" alt="Logo JK Barbearia"><h1>Área do proprietário</h1><p>Acesse a administração da JK Barbearia.</p><div class="field"><label>E-mail</label><input name="email" type="email" required></div><div class="field" style="margin-top:12px"><label>Senha</label><input name="password" type="password" required></div><div id="loginError" style="color:#ff9c9c;margin-top:9px"></div><button class="btn btn-primary" type="submit">Entrar</button></form></div><!-- ===== ESTRUTURA PRINCIPAL DO PAINEL ADMIN ===== -->
+<div class="admin-wrap"><!-- ===== MENU LATERAL DO ADMINISTRADOR ===== -->
+<aside class="sidebar"><a class="admin-sidebar-logo" href="admin.html"><img src="assets/jk-logo.png" alt="JK Barbearia"></a><nav class="side-nav side-nav-links"><a class="side-link " href="admin.html"><span>⌂</span>Visão geral</a><a class="side-link " href="agendamentos-admin.html"><span>▣</span>Agendamentos</a><a class="side-link " href="servicos-admin.html"><span>✂</span>Serviços</a><a class="side-link " href="barbeiros-admin.html"><span>♙</span>Barbeiros</a><a class="side-link active" href="financeiro-admin.html"><span>$</span>Financeiro</a><a class="side-link " href="galeria-admin.html"><span>▧</span>Galeria</a><a class="side-link " href="configuracoes-admin.html"><span>⚙</span>Configurações</a></nav><div class="sidebar-bottom"><a class="side-link" href="index.html"><span>↗</span>Ver site</a><button id="logout" class="side-link side-button"><span>⇥</span>Sair</button></div></aside><!-- ===== CONTEÚDO PRINCIPAL ===== -->
+<!-- ===== CONTEÚDO DA PÁGINA ADMINISTRATIVA ===== -->
+<main class="admin-main"><div class="admin-top"><div class="admin-page-heading"><span class="eyebrow">Painel administrativo</span><h1>Financeiro</h1></div><div class="admin-top-actions"><a class="btn btn-outline" href="index.html">Ver site</a></div></div><!-- ===== CONTROLE FINANCEIRO ===== -->
+<section id="finance" class="panel active">
   <div class="finance-hero finance-hero-v5">
     <div class="finance-hero-copy">
       <span class="eyebrow">Controle financeiro</span>
@@ -85,8 +93,8 @@
         <div><small>Líquido da casa</small><b id="finMonthNet">R$ 0,00</b></div>
       </div>
     </article>
-    <article class="finance-period-card">
-      <div class="finance-period-head"><span>Este ano</span><strong id="finYearCuts">0 cortes</strong></div>
+    <article id="financeAnnualShortcut" class="finance-period-card finance-period-card-clickable" role="button" tabindex="0" title="Abrir relatório anual detalhado">
+      <div class="finance-period-head"><span>Faturamento anual</span><strong id="finYearCuts">0 cortes</strong></div>
       <div class="finance-values">
         <div><small>Faturamento</small><b id="finYearGross">R$ 0,00</b></div>
         <div><small>Comissões</small><b id="finYearCommission">R$ 0,00</b></div>
@@ -147,6 +155,58 @@
     </div>
   </div>
 
+
+<!-- ===== RELATÓRIO ANUAL EXECUTIVO ===== -->
+<section id="financeAnnualDashboard" class="finance-annual-dashboard" hidden>
+  <div class="card finance-annual-head">
+    <div>
+      <span class="eyebrow">Visão executiva anual</span>
+      <h2 id="financeAnnualTitle">Faturamento anual</h2>
+      <p class="muted">Clique em qualquer mês para abrir o relatório completo daquele período.</p>
+    </div>
+    <div class="finance-annual-total">
+      <span>Faturamento do ano</span>
+      <strong id="financeAnnualGross">R$ 0,00</strong>
+      <small id="financeAnnualCuts">0 cortes concluídos</small>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <span class="eyebrow">Janeiro a dezembro</span>
+        <h2>Desempenho mensal</h2>
+        <p class="muted">Os 12 meses aparecem mesmo quando não houve faturamento.</p>
+      </div>
+    </div>
+    <div id="financeAnnualMonthsGrid" class="finance-annual-months-grid"></div>
+  </div>
+
+  <div class="finance-annual-rankings">
+    <div class="card finance-ranking-card">
+      <div class="card-head">
+        <div>
+          <span class="eyebrow">Ranking anual</span>
+          <h2>Mais cortes</h2>
+          <p class="muted">Profissionais com maior número de atendimentos concluídos.</p>
+        </div>
+      </div>
+      <div id="financeAnnualCutsRanking" class="finance-ranking-list"></div>
+    </div>
+
+    <div class="card finance-ranking-card">
+      <div class="card-head">
+        <div>
+          <span class="eyebrow">Ranking anual</span>
+          <h2>Maior faturamento</h2>
+          <p class="muted">Profissionais que mais geraram faturamento para a barbearia.</p>
+        </div>
+      </div>
+      <div id="financeAnnualGrossRanking" class="finance-ranking-list"></div>
+    </div>
+  </div>
+</section>
+
 <div class="card finance-report-detail">
   <div class="card-head"><div><span class="eyebrow">Relatório do período</span><h2 id="financeReportTitle">Detalhamento</h2><p class="muted">Resumo completo do período selecionado.</p></div></div>
   <div id="financePeriodMonthlyGrid" class="finance-monthly-report-grid"></div>
@@ -155,4 +215,5 @@
     <div class="table-wrap"><table class="table finance-report-table"><thead><tr><th>Barbeiro</th><th>Cortes</th><th>Faturamento</th><th>Comissão</th><th>Líquido da casa</th></tr></thead><tbody id="financePeriodBarberRows"></tbody></table></div>
   </div>
 </div>
-</section></main></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/admin.js"></script></body></html>
+</section></main></div><!-- ===== SCRIPTS / FUNCIONALIDADES ===== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/admin.js"></script></body></html>
