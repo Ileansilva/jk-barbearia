@@ -31,12 +31,12 @@ document.addEventListener("DOMContentLoaded",async()=>{
   $("#galleryForm")?.addEventListener("submit",saveGalleryItem);
   $("#settingsForm")?.addEventListener("submit",saveSettings);
   $("#financeBarberSelect")?.addEventListener("change",()=>renderFinance());
-  $("#financeDateFilter")?.addEventListener("change",()=>{if($("#financeDateFilter").value)$("#financeMonthFilter").value="";renderFinance();});
-  $("#financeMonthFilter")?.addEventListener("change",()=>{if($("#financeMonthFilter").value)$("#financeDateFilter").value="";renderFinance();});
+  $("#financeDateFilter")?.addEventListener("change",()=>{if(getFinanceDate())clearFinanceMonth();renderFinance();});
+  $("#financeMonthFilter")?.addEventListener("change",()=>{if(getFinanceMonth())clearFinanceDate();renderFinance();});
   $("#financeYearFilter")?.addEventListener("change",()=>renderFinance());
   $("#financePeriodFilter")?.addEventListener("change",()=>renderFinance());
-  $("#financeTodayFilterBtn")?.addEventListener("click",()=>{$("#financeDateFilter").value=localDateISO();$("#financeMonthFilter").value="";renderFinance();});
-  $("#financeClearDateBtn")?.addEventListener("click",()=>{$("#financeDateFilter").value="";renderFinance();});
+  $("#financeTodayFilterBtn")?.addEventListener("click",()=>{setFinanceDate(localDateISO());clearFinanceMonth();renderFinance();});
+  $("#financeClearDateBtn")?.addEventListener("click",()=>{clearFinanceDate();renderFinance();});
   $("#barberPhotoFile")?.addEventListener("change",previewBarberPhoto);
   $("#profileDate")?.addEventListener("change",()=>renderBarberProfileDay());
   $("#profileTodayBtn")?.addEventListener("click",()=>{const d=$("#profileDate"); if(d){d.value=localDateISO(); renderBarberProfileDay();}});
@@ -476,6 +476,22 @@ function saoPauloDateISO(value=new Date()){
   const map=Object.fromEntries(parts.filter(p=>p.type!=="literal").map(p=>[p.type,p.value]));
   return `${map.year}-${map.month}-${map.day}`;
 }
+
+function getFinanceDate(){
+  return $("#financeDateFilter")?.value||"";
+}
+function setFinanceDate(v){
+  const el=$("#financeDateFilter"); if(el)el.value=v||"";
+}
+function clearFinanceDate(){
+  const el=$("#financeDateFilter"); if(el)el.value="";
+}
+function getFinanceMonth(){
+  return $("#financeMonthFilter")?.value||"";
+}
+function clearFinanceMonth(){
+  const el=$("#financeMonthFilter"); if(el)el.value="";
+}
 function localDateISO(d=new Date()){return saoPauloDateISO(d);}
 function weekStartISO(){
   const today=localDateISO();
@@ -645,8 +661,8 @@ function dateRangeFilter(list,from,to){
   return list.filter(b=>{const d=completionDateISO(b);return d>=from&&d<=to;});
 }
 function customFinanceSelection(base){
-  const date=$("#financeDateFilter")?.value||"";
-  const month=$("#financeMonthFilter")?.value||"";
+  const date=getFinanceDate();
+  const month=getFinanceMonth();
   const year=$("#financeYearFilter")?.value||localDateISO().slice(0,4);
   const period=$("#financePeriodFilter")?.value||"year";
   if(date)return {list:base.filter(b=>completionDateISO(b)===date),title:`Dia ${new Date(date+"T12:00:00").toLocaleDateString("pt-BR")}`,kind:"day",date};
@@ -751,7 +767,7 @@ async function renderFinance(){
 
   const custom=customFinanceSelection(base);
   renderFinanceCustom(financeStats(custom.list),custom.title);
-  renderMonthWeeks(base,$("#financeMonthFilter")?.value||"");
+  renderMonthWeeks(base,getFinanceMonth());
 
   const selectedBarber=barbers.find(b=>String(b.id)===selected);
   $("#financeDetailTitle").textContent=selectedBarber
