@@ -1,183 +1,304 @@
-function initBookingCalendar(){
-  if(typeof flatpickr!=="function")return;
-  if(flatpickr.l10ns?.pt)flatpickr.localize(flatpickr.l10ns.pt);
-  const el=document.querySelector("#date");
-  if(!el)return;
-  flatpickr(el,{
-    dateFormat:"Y-m-d",
-    altInput:true,
-    altFormat:"d/m/Y",
-    minDate:"today",
-    locale:"pt",
-    onChange:()=>el.dispatchEvent(new Event("change",{bubbles:true}))
-  });
-}
-let selectedTime="", settings=null, services=[], barbers=[];
+let selectedTime="";
+let settings=null;
+let services=[];
+let barbers=[];
 
-document.addEventListener("DOMContentLoaded", async ()=>{
-  const date=document.querySelector("#date");
+const qs=(s)=>document.querySelector(s);
+
+document.addEventListener("DOMContentLoaded", initBooking);
+
+async function initBooking(){
+  const form=qs("#bookingForm");
+  const date=qs("#date");
+  const service=qs("#service");
+  const barber=qs("#barber");
+
+  if(!form||!date||!service||!barber){
+    console.error("JK Booking: elementos essenciais do formulário não encontrados.");
+    return;
+  }
+
   date.min=JK.todayISO();
-  document.querySelector("#bookingForm").addEventListener("submit",submitBooking);
-  date.addEventListener("change",renderTimes);
-  document.querySelector("#service").addEventListener("change",()=>{selectedTime="";renderSummary();renderTimes();});
-  document.querySelector("#barber").addEventListener("change",()=>{selectedTime="";syncBookingBarberCards();renderSummary();renderTimes();});
+
+  form.addEventListener("submit",submitBooking);
+  date.addEventListener("change",()=>{
+    selectedTime="";
+    renderSummary();
+    renderTimes();
+  });
+  service.addEventListener("change",()=>{
+    selectedTime="";
+    renderSummary();
+    renderTimes();
+  });
+  barber.addEventListener("change",()=>{
+    selectedTime="";
+    syncBookingBarberCards();
+    renderSummary();
+    renderTimes();
+  });
+
   await loadBase();
-});
+}
 
 async function loadBase(){
-  const [s1,s2,s3]=await Promise.all([
-    sb.from("services").select("*").eq("active",true).order("sort_order").order("id"),
-    sb.from("settings").select("*").eq("id",1).single(),
-    sb.from("barbers").select("*").eq("active",true).order("sort_order").order("id")
-  ]);
+  const serviceSel=qs("#service");
+  const barberSel=qs("#barber");
+  const barberCards=qs("#bookingBarberCards");
 
-  if(s1.error)return toast("Não foi possível carregar os serviços.","error");
-  if(s2.error)return toast("Não foi possível carregar os horários da barbearia.","error");
-  if(s3.error)return toast("Não foi possível carregar os barbeiros.","error");
+  serviceSel.innerHTML='<option value="">Carregando serviços...</option>';
+  barberSel.innerHTML='<option value="">Carregando barbeiros...</option>';
+  if(barberCards)barberCards.innerHTML='<div class="empty">Carregando barbeiros...</div>';
 
-  services=s1.data||[];
-  settings=s2.data;
-  barbers=s3.data||[];
+  try{
+    const [s1,s2,s3]=await Promise.all([
+      sb.from("services").select("*").eq("active",true).order("sort_order").order("id"),
+      sb.from("settings").select("*").eq("id",1).single(),
+      sb.from("barbers").select("*").eq("active",true).order("sort_order").order("id")
+    ]);
 
-  const serviceSel=document.querySelector("#service");
-  serviceSel.innerHTML='<option value="">Selecione um serviço</option>'+services.map(s=>`<option value="${s.id}">${JK.esc(s.name)} — ${JK.money(s.price)}</option>`).join("");
+    if(s1.error)throw new Error("Serviços: "+s1.error.message);
+    if(s2.error)throw new Error("Configurações: "+s2.error.message);
+    if(s3.error)throw new Error("Barbeiros: "+s3.error.message);
 
-  const barberSel=document.querySelector("#barber");
-  barberSel.innerHTML=barbers.length
-    ? '<option value="">Selecione um barbeiro</option>'+barbers.map(b=>`<option value="${b.id}">${JK.esc(b.name)}</option>`).join("")
-    : '<option value="">Nenhum barbeiro disponível</option>';
-  renderBookingBarberCards();
+    services=s1.data||[];
+    settings=s2.data||null;
+    barbers=s3.data||[];
 
-  const pre=new URLSearchParams(location.search).get("service");
-  if(pre)serviceSel.value=pre;
-  renderSummary();
+    serviceSel.innerHTML=services.length
+      ? '<option value="">Selecione um serviço</option>'+services.map(s=>`<option value="${s.id}">${JK.esc(s.name)} — ${JK.money(s.price)}</option>`).join("")
+      : '<option value="">Nenhum serviço disponível</option>';
+
+    barberSel.innerHTML=barbers.length
+      ? '<option value="">Selecione um barbeiro</option>'+barbers.map(b=>`<option value="${b.id}">${JK.esc(b.name)}</option>`).join("")
+      : '<option value="">Nenhum barbeiro disponível</option>';
+
+    renderBookingBarberCards();
+
+    const pre=new URLSearchParams(location.search).get("service");
+    if(pre && services.some(s=>String(s.id)===String(pre))){
+      serviceSel.value=String(pre);
+    }
+
+    renderSummary();
+  }catch(err){
+    console.error("JK Booking loadBase:",err);
+    serviceSel.innerHTML='<option value="">Erro ao carregar serviços</option>';
+    barberSel.innerHTML='<option value="">Erro ao carregar barbeiros</option>';
+    if(barberCards)barberCards.innerHTML='<div class="empty booking-error">Não foi possível carregar os dados do agendamento. Atualize a página.</div>';
+    toast("Não foi possível carregar o agendamento. Atualize a página.","error");
+  }
 }
-
 
 function renderBookingBarberCards(){
-  const root=document.querySelector("#bookingBarberCards"); if(!root)return;
-  if(!barbers.length){root.innerHTML='<div class="empty">Nenhum barbeiro disponível.</div>';return;}
-  root.innerHTML=barbers.map(b=>`<button type="button" class="booking-barber-card" data-barber-id="${b.id}" onclick="selectBookingBarber(${b.id})">
-    ${b.photo_url?`<img src="${JK.esc(b.photo_url)}" alt="Foto de ${JK.esc(b.name)}">`:`<span class="booking-barber-placeholder">✂</span>`}
-    <strong>${JK.esc(b.name)}</strong>
-    <small>Selecionar</small>
-  </button>`).join("");
+  const root=qs("#bookingBarberCards");
+  if(!root)return;
+
+  if(!barbers.length){
+    root.innerHTML='<div class="empty">Nenhum barbeiro disponível.</div>';
+    return;
+  }
+
+  root.innerHTML=barbers.map(b=>`
+    <button type="button" class="booking-barber-card" data-barber-id="${b.id}">
+      ${b.photo_url
+        ? `<img src="${JK.esc(b.photo_url)}" alt="Foto de ${JK.esc(b.name)}" loading="lazy">`
+        : `<span class="booking-barber-placeholder">✂</span>`}
+      <span class="booking-barber-info">
+        <strong>${JK.esc(b.name)}</strong>
+        <small>Selecionar profissional</small>
+      </span>
+      <span class="booking-barber-check">✓</span>
+    </button>`).join("");
+
+  root.querySelectorAll(".booking-barber-card").forEach(card=>{
+    card.addEventListener("click",()=>selectBookingBarber(card.dataset.barberId));
+  });
+
   syncBookingBarberCards();
 }
+
 function selectBookingBarber(id){
-  const sel=document.querySelector("#barber");
+  const sel=qs("#barber");
+  if(!sel)return;
   sel.value=String(id);
   sel.dispatchEvent(new Event("change",{bubbles:true}));
 }
+
 function syncBookingBarberCards(){
-  const selected=document.querySelector("#barber")?.value||"";
-  document.querySelectorAll(".booking-barber-card").forEach(card=>card.classList.toggle("active",card.dataset.barberId===selected));
+  const selected=qs("#barber")?.value||"";
+  document.querySelectorAll(".booking-barber-card").forEach(card=>{
+    const active=card.dataset.barberId===selected;
+    card.classList.toggle("active",active);
+    card.setAttribute("aria-pressed",String(active));
+  });
+}
+
+function validISODate(value){
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value||""));
 }
 
 async function renderTimes(){
   selectedTime="";
   renderSummary();
 
-  const date=document.querySelector("#date").value;
-  const serviceId=Number(document.querySelector("#service").value);
-  const barberId=Number(document.querySelector("#barber").value);
-  const root=document.querySelector("#times");
+  const date=qs("#date")?.value||"";
+  const serviceId=Number(qs("#service")?.value||0);
+  const barberId=Number(qs("#barber")?.value||0);
+  const root=qs("#times");
+  if(!root)return;
 
-  if(!serviceId||!barberId||!date){
+  if(!serviceId||!barberId||!validISODate(date)){
     root.innerHTML='<div class="empty" style="grid-column:1/-1">Escolha serviço, barbeiro e data.</div>';
     return;
   }
 
-  root.innerHTML='<div class="empty" style="grid-column:1/-1">Consultando agenda do barbeiro...</div>';
-
-  const {data,error}=await sb.rpc("get_available_times",{
-    p_date:date,
-    p_barber_id:barberId,
-    p_service_id:serviceId
-  });
-
-  if(error){
-    console.error(error);
-    root.innerHTML='<div class="empty" style="grid-column:1/-1">Não foi possível consultar a agenda.</div>';
+  if(date<JK.todayISO()){
+    root.innerHTML='<div class="empty booking-error" style="grid-column:1/-1">Escolha uma data de hoje em diante.</div>';
     return;
   }
 
-  const available=(data||[]).map(x=>String(x.available_time).slice(0,5));
-  if(!available.length){
-    root.innerHTML='<div class="empty" style="grid-column:1/-1">Nenhum horário disponível para este barbeiro nesta data.</div>';
-    return;
-  }
+  root.innerHTML='<div class="empty booking-loading" style="grid-column:1/-1">Consultando horários disponíveis...</div>';
 
-  root.innerHTML=available.map(t=>`<button type="button" class="time-btn" data-time="${t}">${t}</button>`).join("");
-  root.querySelectorAll(".time-btn").forEach(btn=>btn.addEventListener("click",()=>{
-    root.querySelectorAll(".time-btn").forEach(x=>x.classList.remove("active"));
-    btn.classList.add("active");
-    selectedTime=btn.dataset.time;
-    renderSummary();
-  }));
+  try{
+    const {data,error}=await sb.rpc("get_available_times",{
+      p_date:date,
+      p_barber_id:barberId,
+      p_service_id:serviceId
+    });
+
+    if(error)throw error;
+
+    const available=(data||[])
+      .map(x=>String(x.available_time??x).slice(0,5))
+      .filter(Boolean);
+
+    if(!available.length){
+      root.innerHTML='<div class="empty" style="grid-column:1/-1">Nenhum horário disponível para este profissional nessa data.</div>';
+      return;
+    }
+
+    root.innerHTML=available.map(t=>`
+      <button type="button" class="time-btn" data-time="${t}" aria-pressed="false">${t}</button>
+    `).join("");
+
+    root.querySelectorAll(".time-btn").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        root.querySelectorAll(".time-btn").forEach(x=>{
+          x.classList.remove("active");
+          x.setAttribute("aria-pressed","false");
+        });
+        btn.classList.add("active");
+        btn.setAttribute("aria-pressed","true");
+        selectedTime=btn.dataset.time;
+        renderSummary();
+      });
+    });
+  }catch(err){
+    console.error("JK Booking renderTimes:",err);
+    root.innerHTML='<div class="empty booking-error" style="grid-column:1/-1">Não foi possível consultar os horários. Tente novamente.</div>';
+    toast("Erro ao consultar os horários disponíveis.","error");
+  }
 }
 
 function renderSummary(){
-  const sid=document.querySelector("#service")?.value;
-  const bid=document.querySelector("#barber")?.value;
+  const sid=qs("#service")?.value;
+  const bid=qs("#barber")?.value;
   const s=services.find(x=>String(x.id)===String(sid));
   const b=barbers.find(x=>String(x.id)===String(bid));
 
-  document.querySelector("#summaryBarber").textContent=b?.name||"—";
-  document.querySelector("#summaryService").textContent=s?.name||"—";
-  document.querySelector("#summaryPrice").textContent=s?JK.money(s.price):"—";
+  const summaryBarber=qs("#summaryBarber");
+  const summaryService=qs("#summaryService");
+  const summaryPrice=qs("#summaryPrice");
+  const summaryDate=qs("#summaryDate");
+  const summaryTime=qs("#summaryTime");
 
-  const d=document.querySelector("#date")?.value;
-  document.querySelector("#summaryDate").textContent=d?new Date(d+"T12:00:00").toLocaleDateString("pt-BR"):"—";
-  document.querySelector("#summaryTime").textContent=selectedTime||"—";
+  if(summaryBarber)summaryBarber.textContent=b?.name||"—";
+  if(summaryService)summaryService.textContent=s?.name||"—";
+  if(summaryPrice)summaryPrice.textContent=s?JK.money(s.price):"—";
+
+  const d=qs("#date")?.value||"";
+  if(summaryDate){
+    summaryDate.textContent=validISODate(d)
+      ? new Date(d+"T12:00:00").toLocaleDateString("pt-BR")
+      : "—";
+  }
+  if(summaryTime)summaryTime.textContent=selectedTime||"—";
 }
 
 async function submitBooking(e){
   e.preventDefault();
+
   const form=e.currentTarget;
   const f=new FormData(form);
-  const barberId=Number(f.get("barber"));
-  const serviceId=Number(f.get("service"));
+  const name=String(f.get("name")||"").trim();
+  const phone=String(f.get("phone")||"").trim();
+  const barberId=Number(f.get("barber")||0);
+  const serviceId=Number(f.get("service")||0);
+  const bookingDate=String(f.get("date")||"");
 
-  if(!barberId)return toast("Escolha um barbeiro.","error");
+  if(name.length<2)return toast("Digite seu nome.","error");
+  if(phone.length<8)return toast("Digite um WhatsApp válido.","error");
   if(!serviceId)return toast("Escolha um serviço.","error");
-  if(!selectedTime)return toast("Escolha um horário.","error");
+  if(!barberId)return toast("Escolha um barbeiro.","error");
+  if(!validISODate(bookingDate))return toast("Escolha a data do atendimento.","error");
+  if(!selectedTime)return toast("Escolha um horário disponível.","error");
 
   const btn=form.querySelector("button[type=submit]");
-  if(btn.disabled)return;
+  if(!btn||btn.disabled)return;
+
   btn.disabled=true;
-  btn.textContent="Confirmando...";
+  const oldText=btn.textContent;
+  btn.textContent="Confirmando agendamento...";
 
-  const {data,error}=await sb.rpc("create_booking_with_barber",{
-    p_client_name:String(f.get("name")||"").trim(),
-    p_phone:String(f.get("phone")||"").trim(),
-    p_service_id:serviceId,
-    p_barber_id:barberId,
-    p_booking_date:f.get("date"),
-    p_booking_time:selectedTime,
-    p_notes:String(f.get("notes")||"").trim()
-  });
+  try{
+    const {data,error}=await sb.rpc("create_booking_with_barber",{
+      p_client_name:name,
+      p_phone:phone,
+      p_service_id:serviceId,
+      p_barber_id:barberId,
+      p_booking_date:bookingDate,
+      p_booking_time:selectedTime,
+      p_notes:String(f.get("notes")||"").trim()
+    });
 
-  btn.disabled=false;
-  btn.textContent="Confirmar agendamento";
+    if(error)throw error;
 
-  if(error){
+    const protocol=qs("#protocol");
+    const success=qs("#successBox");
+    if(protocol)protocol.textContent=data??"Confirmado";
+    if(success){
+      success.style.display="block";
+      success.scrollIntoView({behavior:"smooth",block:"nearest"});
+    }
+
+    form.reset();
+    selectedTime="";
+    syncBookingBarberCards();
+
+    const times=qs("#times");
+    if(times)times.innerHTML='<div class="empty" style="grid-column:1/-1">Escolha serviço, barbeiro e data.</div>';
+
+    renderSummary();
+    toast("Agendamento realizado com sucesso!","success");
+  }catch(err){
+    console.error("JK Booking submit:",err);
+    toast(err?.message||"Não foi possível concluir o agendamento.","error");
     await renderTimes();
-    return toast(error.message||"Não foi possível concluir o agendamento.","error");
+  }finally{
+    btn.disabled=false;
+    btn.textContent=oldText;
   }
-
-  document.querySelector("#protocol").textContent=data;
-  document.querySelector("#successBox").style.display="block";
-  form.reset();
-  selectedTime="";
-  document.querySelector("#times").innerHTML='<div class="empty" style="grid-column:1/-1">Escolha serviço, barbeiro e data.</div>';
-  renderSummary();
-  toast("Agendamento realizado com sucesso!","success");
 }
 
 function toast(msg,type="success"){
-  const t=document.querySelector("#toast");
+  const t=qs("#toast");
+  if(!t){
+    alert(msg);
+    return;
+  }
   t.textContent=msg;
   t.className=`toast ${type} show`;
-  setTimeout(()=>t.classList.remove("show"),4000);
+  clearTimeout(toast.timer);
+  toast.timer=setTimeout(()=>t.classList.remove("show"),4500);
 }
