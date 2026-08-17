@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<!-- ===== CABEÇALHO / CONFIGURAÇÕES DA PÁGINA ===== -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clientes | JK Barbearia</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/admin-v2.css">
+<link rel="stylesheet" href="css/admin-v3.css">
+<link rel="stylesheet" href="css/admin-v5.css">
+<link rel="stylesheet" href="css/admin-v6.css">
+<link rel="stylesheet" href="css/admin-v7.css">
+<link rel="stylesheet" href="css/admin-v8.css">
+<link rel="stylesheet" href="css/customers-v16.css">
+</head>
+<body class="admin-body admin-multipage" data-admin-page="customers">
+<!-- ===== LOGIN DO PROPRIETÁRIO ===== -->
+<div id="loginOverlay" class="login-overlay">
+  <form id="loginForm" class="login-card">
+    <img src="assets/jk-logo.png" alt="Logo JK Barbearia">
+    <h1>Área do proprietário</h1>
+    <p>Acesse a administração da JK Barbearia.</p>
+    <div class="field"><label>E-mail</label><input name="email" type="email" required></div>
+    <div class="field" style="margin-top:12px"><label>Senha</label><input name="password" type="password" required></div>
+    <div id="loginError" style="color:#ff9c9c;margin-top:9px"></div>
+    <button class="btn btn-primary" type="submit">Entrar</button>
+  </form>
+</div>
+
+<!-- ===== ESTRUTURA PRINCIPAL DO PAINEL ===== -->
+<div class="admin-wrap">
+  <!-- ===== MENU LATERAL ===== -->
+  <aside class="sidebar">
+    <a class="admin-sidebar-logo" href="admin.html"><img src="assets/jk-logo.png" alt="JK Barbearia"></a>
+    <nav class="side-nav side-nav-links">
+      <a class="side-link" href="admin.html"><span>⌂</span>Visão geral</a>
+      <a class="side-link" href="agendamentos-admin.html"><span>▣</span>Agendamentos</a>
+      <a class="side-link active" href="clientes-admin.html"><span>♧</span>Clientes</a>
+      <a class="side-link" href="servicos-admin.html"><span>✂</span>Serviços</a>
+      <a class="side-link" href="barbeiros-admin.html"><span>♙</span>Barbeiros</a>
+      <a class="side-link" href="financeiro-admin.html"><span>$</span>Financeiro</a>
+      <a class="side-link" href="galeria-admin.html"><span>▧</span>Galeria</a>
+      <a class="side-link" href="configuracoes-admin.html"><span>⚙</span>Configurações</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a class="side-link" href="index.html"><span>↗</span>Ver site</a>
+      <button id="logout" class="side-link side-button"><span>⇥</span>Sair</button>
+    </div>
+  </aside>
+
+  <!-- ===== CONTEÚDO DA PÁGINA CLIENTES ===== -->
+  <main class="admin-main">
+    <div class="admin-top">
+      <div class="admin-page-heading">
+        <span class="eyebrow">Relacionamento com clientes</span>
+        <h1>Clientes</h1>
+        <p class="muted">Cadastro, aniversários, histórico de visitas e recuperação de clientes.</p>
+      </div>
+      <div class="admin-top-actions">
+        <button id="newCustomerBtn" class="btn btn-outline" type="button">+ Novo cliente</button>
+        <a class="btn btn-outline" href="index.html">Ver site</a>
+      </div>
+    </div>
+
+    <!-- ===== INDICADORES DO CRM ===== -->
+    <section class="customer-kpis">
+      <article class="customer-kpi"><span>Clientes cadastrados</span><strong id="customerKpiTotal">0</strong><small>Base total</small></article>
+      <article class="customer-kpi birthday"><span>Aniversariantes hoje</span><strong id="customerKpiBirthdays">0</strong><small>Mensagem pronta no WhatsApp</small></article>
+      <article class="customer-kpi inactive"><span>Sem retornar</span><strong id="customerKpiInactive">0</strong><small id="customerKpiInactiveLabel">Há 30+ dias</small></article>
+      <article class="customer-kpi"><span>Visitas concluídas</span><strong id="customerKpiVisits">0</strong><small>Histórico vinculado</small></article>
+    </section>
+
+    <!-- ===== CADASTRO / EDIÇÃO ===== -->
+    <section class="customer-layout">
+      <article class="card customer-form-card">
+        <div class="card-head">
+          <div>
+            <span class="eyebrow">Cadastro</span>
+            <h2 id="customerFormTitle">Novo cliente</h2>
+            <p class="muted">O telefone é usado para ligar automaticamente futuros agendamentos ao cadastro.</p>
+          </div>
+        </div>
+
+        <form id="customerForm" class="form-grid">
+          <input id="customerId" type="hidden">
+          <div class="field full">
+            <label>Nome completo</label>
+            <input id="customerFullName" name="fullName" maxlength="120" required placeholder="Nome e sobrenome">
+          </div>
+          <div class="field">
+            <label>WhatsApp</label>
+            <input id="customerPhone" name="phone" maxlength="25" required placeholder="(00) 00000-0000">
+          </div>
+          <div class="field">
+            <label>Data de nascimento</label>
+            <input id="customerBirthDate" name="birthDate" type="date">
+          </div>
+          <div class="field full">
+            <label>Observações</label>
+            <textarea id="customerNotes" name="notes" rows="3" maxlength="500" placeholder="Preferências, observações ou informações úteis"></textarea>
+          </div>
+          <div class="field full customer-form-actions">
+            <button class="btn btn-primary" type="submit">Salvar cliente</button>
+            <button id="cancelCustomerEditBtn" class="btn btn-outline" type="button" hidden>Cancelar edição</button>
+          </div>
+        </form>
+      </article>
+
+      <!-- ===== CONFIGURAÇÕES DE RETORNO E MENSAGENS ===== -->
+      <article class="card customer-rules-card">
+        <div class="card-head">
+          <div>
+            <span class="eyebrow">Automação assistida</span>
+            <h2>Retorno e WhatsApp</h2>
+            <p class="muted">Defina quando um cliente será considerado sem retorno e personalize as mensagens.</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Considerar cliente sem retorno após</label>
+          <div class="customer-days-control">
+            <input id="customerInactiveDays" type="number" min="1" max="365" value="30">
+            <span>dias</span>
+          </div>
+          <div class="customer-day-presets">
+            <button type="button" data-days="20">20 dias</button>
+            <button type="button" data-days="30">30 dias</button>
+            <button type="button" data-days="45">45 dias</button>
+            <button type="button" data-days="60">60 dias</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Mensagem de aniversário</label>
+          <textarea id="birthdayMessageTemplate" rows="4" maxlength="500"></textarea>
+          <small class="muted">Use <b>{nome}</b> para inserir o nome automaticamente.</small>
+        </div>
+
+        <div class="field">
+          <label>Mensagem para cliente sem retorno</label>
+          <textarea id="inactiveMessageTemplate" rows="4" maxlength="500"></textarea>
+          <small class="muted">Use <b>{nome}</b> e <b>{dias}</b>.</small>
+        </div>
+
+        <button id="saveCustomerRulesBtn" class="btn btn-primary" type="button">Salvar regras</button>
+      </article>
+    </section>
+
+    <!-- ===== ANIVERSARIANTES DO DIA ===== -->
+    <section class="card customer-section-card">
+      <div class="card-head customer-section-heading">
+        <div>
+          <span class="eyebrow">Relacionamento</span>
+          <h2>🎂 Aniversariantes do dia</h2>
+          <p class="muted">Clique em WhatsApp para abrir a conversa com a mensagem já preenchida.</p>
+        </div>
+        <span id="birthdayTodayDate" class="customer-section-pill">Hoje</span>
+      </div>
+      <div id="birthdayCustomersGrid" class="customer-special-grid">
+        <div class="empty">Carregando aniversariantes...</div>
+      </div>
+    </section>
+
+    <!-- ===== CLIENTES SEM RETORNO ===== -->
+    <section class="card customer-section-card">
+      <div class="card-head customer-section-heading">
+        <div>
+          <span class="eyebrow">Recuperação de clientes</span>
+          <h2>Clientes sem retornar</h2>
+          <p class="muted">Baseado na última visita concluída registrada no sistema.</p>
+        </div>
+        <span id="inactiveDaysBadge" class="customer-section-pill">30+ dias</span>
+      </div>
+      <div id="inactiveCustomersGrid" class="customer-special-grid">
+        <div class="empty">Calculando histórico...</div>
+      </div>
+    </section>
+
+    <!-- ===== PESQUISA PROFISSIONAL ===== -->
+    <section class="card customer-section-card">
+      <div class="card-head customer-section-heading">
+        <div>
+          <span class="eyebrow">Base de clientes</span>
+          <h2>Pesquisar clientes</h2>
+          <p class="muted">Busque por nome ou telefone e consulte o histórico de retorno.</p>
+        </div>
+      </div>
+
+      <div class="customer-search-bar">
+        <div class="customer-search-input">
+          <span>⌕</span>
+          <input id="customerSearch" type="search" placeholder="Pesquisar por nome ou WhatsApp...">
+        </div>
+        <select id="customerFilter">
+          <option value="all">Todos os clientes</option>
+          <option value="birthday">Aniversariantes de hoje</option>
+          <option value="inactive">Sem retorno</option>
+          <option value="with-birthday">Com aniversário cadastrado</option>
+          <option value="without-birthday">Sem aniversário cadastrado</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="admin-table customer-table">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Aniversário</th>
+              <th>Última visita</th>
+              <th>Visitas</th>
+              <th>Faturamento gerado</th>
+              <th>Contato</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="customerRows">
+            <tr><td colspan="7">Carregando clientes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ===== SCRIPTS / FUNCIONALIDADES ===== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/customers.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
