@@ -1,0 +1,74 @@
+/*
+==========================================================
+JK BARBEARIA - CRM DE CLIENTES V16
+==========================================================
+Visual da página Clientes:
+- cadastro
+- aniversariantes
+- clientes sem retorno
+- pesquisa
+- WhatsApp
+==========================================================
+*/
+
+.customer-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.customer-kpi{display:grid;gap:5px;padding:17px;border:1px solid rgba(255,255,255,.07);border-radius:16px;background:linear-gradient(180deg,#111416,#0b0d0f);min-width:0}
+.customer-kpi span{font-size:.67rem;color:#899198;text-transform:uppercase;letter-spacing:.055em;font-weight:850}
+.customer-kpi strong{font-size:1.65rem;color:#f1d68c}
+.customer-kpi small{font-size:.66rem;color:#747d85}
+.customer-kpi.birthday{border-color:rgba(214,168,79,.18)}
+.customer-kpi.inactive{border-color:rgba(214,112,79,.16)}
+
+.customer-layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(340px,.95fr);gap:16px;margin-bottom:16px}
+.customer-form-card,.customer-rules-card,.customer-section-card{padding:20px!important}
+.customer-form-actions{display:flex;gap:9px;flex-wrap:wrap}
+
+.customer-days-control{display:grid;grid-template-columns:1fr auto}
+.customer-days-control input{border-radius:11px 0 0 11px!important}
+.customer-days-control span{display:grid;place-items:center;padding:0 14px;border:1px solid rgba(255,255,255,.085);border-left:0;border-radius:0 11px 11px 0;background:#101315;color:#8c949c;font-size:.76rem}
+.customer-day-presets{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.customer-day-presets button{padding:7px 9px;border-radius:999px;border:1px solid rgba(214,168,79,.14);background:rgba(214,168,79,.045);color:#cdbb8a;cursor:pointer;font-size:.68rem;font-weight:800}
+.customer-day-presets button:hover{border-color:rgba(214,168,79,.38);color:#f1d68c}
+
+.customer-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.customer-section-pill{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;background:rgba(214,168,79,.06);border:1px solid rgba(214,168,79,.14);color:#d8c083;font-size:.68rem;font-weight:850;white-space:nowrap}
+
+.customer-special-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.customer-special-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:13px;border:1px solid rgba(255,255,255,.065);border-radius:14px;background:#0c0f11;min-width:0}
+.customer-special-card.birthday-card{border-color:rgba(214,168,79,.16);background:linear-gradient(135deg,rgba(214,168,79,.055),#0c0f11 55%)}
+.customer-special-card.inactive-card{border-color:rgba(214,112,79,.12)}
+.customer-special-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:rgba(214,168,79,.08);font-size:1.35rem}
+.customer-away-days{width:53px;height:53px;display:grid;place-items:center;align-content:center;border-radius:14px;background:rgba(214,112,79,.07);border:1px solid rgba(214,112,79,.13)}
+.customer-away-days strong{font-size:1.05rem;color:#ecb19b;line-height:1}
+.customer-away-days span{font-size:.56rem;color:#a77d70;text-transform:uppercase}
+.customer-special-main{min-width:0}
+.customer-special-main h3{margin:3px 0;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.customer-special-main p{margin:0;color:#858d95;font-size:.7rem}
+.customer-special-label{font-size:.58rem;text-transform:uppercase;letter-spacing:.06em;color:#b59b61;font-weight:850}
+.customer-whatsapp-btn,.whatsapp-mini{border-color:rgba(61,189,112,.22)!important;color:#9ad8b2!important;background:rgba(61,189,112,.055)!important}
+.customer-whatsapp-btn{padding:9px 11px;border-radius:10px;border:1px solid rgba(61,189,112,.22);font-weight:850;cursor:pointer}
+.customer-whatsapp-btn:hover{background:rgba(61,189,112,.11)!important}
+
+.customer-search-bar{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:10px;margin-bottom:14px}
+.customer-search-input{display:grid;grid-template-columns:36px 1fr;align-items:center;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:#0b0e10}
+.customer-search-input>span{display:grid;place-items:center;color:#9aa1a8;font-size:1.1rem}
+.customer-search-input input{border:0!important;background:transparent!important;box-shadow:none!important}
+.customer-search-bar select{min-height:46px}
+
+.customer-table td{vertical-align:middle}
+.customer-empty-special{grid-column:1/-1}
+
+@media(max-width:1100px){
+  .customer-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .customer-layout{grid-template-columns:1fr}
+}
+@media(max-width:800px){
+  .customer-special-grid{grid-template-columns:1fr}
+  .customer-search-bar{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .customer-kpis{grid-template-columns:1fr}
+  .customer-special-card{grid-template-columns:auto minmax(0,1fr)}
+  .customer-whatsapp-btn{grid-column:1/-1;width:100%}
+  .customer-section-heading{flex-direction:column}
+}
