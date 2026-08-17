@@ -113,7 +113,7 @@ async function renderCurrentPage(){
     await renderBarberProfileDay();
     return;
   }
-  const tasks={dashboard:renderKPIs,appointments:renderBookings,services:renderServicesAdmin,barbers:renderBarbersAdmin,finance:renderFinance,gallery:renderGalleryAdmin,settings:loadSettings};
+  const tasks={dashboard:renderKPIs,appointments:renderBookings,customers:renderCustomersAdmin,services:renderServicesAdmin,barbers:renderBarbersAdmin,finance:renderFinance,gallery:renderGalleryAdmin,settings:loadSettings};
   const task=tasks[page];
   if(task)await task();
 }
