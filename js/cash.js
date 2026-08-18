@@ -12,6 +12,7 @@ JK BARBEARIA - ABERTURA E FECHAMENTO DE CAIXA V17
 ==========================================================
 */
 let currentCashRegister=null,currentCashBookings=[],currentCashMovements=[];
+let pendingCashDeleteId=null,pendingCashDeleteRow=null;
 const cashQ=s=>document.querySelector(s);
 
 document.addEventListener("DOMContentLoaded",()=>{
@@ -21,6 +22,10 @@ document.addEventListener("DOMContentLoaded",()=>{
   cashQ("#closeCashForm")?.addEventListener("submit",closeCashRegister);
   cashQ("#refreshCashBtn")?.addEventListener("click",renderCashAdmin);
   cashQ("#cashCountedAmount")?.addEventListener("input",updateCashClosePreview);
+  cashQ("#deleteCashAuthForm")?.addEventListener("submit",confirmDeleteCash);
+  cashQ("#closeDeleteCashModalBtn")?.addEventListener("click",closeDeleteCashModal);
+  cashQ("#cancelDeleteCashBtn")?.addEventListener("click",closeDeleteCashModal);
+  document.querySelector("[data-close-cash-delete]")?.addEventListener("click",closeDeleteCashModal);
 });
 
 async function renderCashAdmin(){
@@ -195,7 +200,10 @@ async function renderCashHistory(){
       <td>${cashMoney(r.card_total)}</td>
       <td>${cashMoney(r.cash_sales_total)}</td>
       <td class="${diff<0?"cash-diff-negative":diff>0?"cash-diff-positive":""}"><strong>${r.status==="fechado"?cashMoney(diff):"—"}</strong></td>
-      <td><button class="mini-btn" type="button" onclick="showCashHistoryDetail(${r.id})">Detalhes</button></td>
+      <td><div class="cash-history-actions">
+        <button class="mini-btn" type="button" onclick="showCashHistoryDetail(${r.id})">Detalhes</button>
+        ${r.status==="fechado"?`<button class="mini-btn cash-delete-btn" type="button" onclick="openDeleteCashModal(${r.id})">Excluir</button>`:""}
+      </div></td>
     </tr>`;
   }).join("");
 }
@@ -230,3 +238,92 @@ async function showCashHistoryDetail(id){
 
 // Disponibiliza o módulo para o roteador do painel.
 window.renderCashAdmin=renderCashAdmin;
+
+
+// ===== EXCLUSÃO PROTEGIDA DE CAIXA V18 =====
+async function openDeleteCashModal(id){
+  const {data,error}=await sb.from("cash_registers").select("*").eq("id",id).single();
+  if(error||!data)return adminToast("Não foi possível localizar este caixa.",true);
+  if(data.status!=="fechado")return adminToast("Feche o caixa antes de excluí-lo.",true);
+
+  pendingCashDeleteId=Number(id);
+  pendingCashDeleteRow=data;
+
+  const {data:authData}=await sb.auth.getUser();
+  const currentEmail=authData?.user?.email||"";
+  cashQ("#deleteCashEmail").value=currentEmail;
+  cashQ("#deleteCashPassword").value="";
+  cashQ("#deleteCashError").hidden=true;
+  cashQ("#deleteCashError").textContent="";
+
+  const date=new Date(data.opened_at);
+  cashQ("#deleteCashSummary").innerHTML=`
+    <span><small>Caixa</small><strong>#${data.id}</strong></span>
+    <span><small>Data</small><strong>${date.toLocaleDateString("pt-BR")}</strong></span>
+    <span><small>Vendas</small><strong>${cashMoney(data.gross_total)}</strong></span>
+    <span><small>Diferença</small><strong>${cashMoney(data.difference_amount)}</strong></span>`;
+
+  cashQ("#deleteCashModal").hidden=false;
+  document.body.classList.add("cash-modal-open");
+  setTimeout(()=>cashQ("#deleteCashPassword")?.focus(),80);
+}
+
+function closeDeleteCashModal(){
+  cashQ("#deleteCashModal").hidden=true;
+  document.body.classList.remove("cash-modal-open");
+  pendingCashDeleteId=null;
+  pendingCashDeleteRow=null;
+  cashQ("#deleteCashPassword").value="";
+  cashQ("#deleteCashError").hidden=true;
+  cashQ("#deleteCashError").textContent="";
+}
+
+function deleteCashError(message){
+  const box=cashQ("#deleteCashError");
+  box.textContent=message; box.hidden=false;
+}
+
+async function confirmDeleteCash(e){
+  e.preventDefault();
+  if(!pendingCashDeleteId||!pendingCashDeleteRow)return deleteCashError("Nenhum caixa selecionado.");
+  if(pendingCashDeleteRow.status!=="fechado")return deleteCashError("Somente caixas fechados podem ser excluídos.");
+
+  const email=String(cashQ("#deleteCashEmail").value||"").trim().toLowerCase();
+  const password=String(cashQ("#deleteCashPassword").value||"");
+  const button=cashQ("#confirmDeleteCashBtn");
+
+  const {data:userData,error:userError}=await sb.auth.getUser();
+  if(userError||!userData?.user)return deleteCashError("Sua sessão expirou. Entre novamente.");
+  const currentUser=userData.user;
+  const currentEmail=String(currentUser.email||"").trim().toLowerCase();
+
+  if(email!==currentEmail)return deleteCashError("Use o mesmo e-mail do proprietário que está logado.");
+  if(!password)return deleteCashError("Informe a senha do proprietário.");
+
+  button.disabled=true; button.textContent="Validando senha...";
+  try{
+    const {data:reauth,error:reauthError}=await sb.auth.signInWithPassword({email,password});
+    if(reauthError||!reauth?.user)throw new Error("E-mail ou senha incorretos.");
+    if(reauth.user.id!==currentUser.id)throw new Error("Conta diferente do proprietário logado.");
+
+    const {data:latest,error:latestError}=await sb.from("cash_registers")
+      .select("id,status").eq("id",pendingCashDeleteId).single();
+    if(latestError||!latest)throw new Error("Este caixa não existe mais.");
+    if(latest.status!=="fechado")throw new Error("Este caixa não está fechado.");
+
+    button.textContent="Excluindo...";
+    const cashId=pendingCashDeleteId;
+    const {error:deleteError}=await sb.from("cash_registers")
+      .delete().eq("id",cashId).eq("status","fechado");
+    if(deleteError)throw deleteError;
+
+    closeDeleteCashModal();
+    const detail=cashQ("#cashHistoryDetail"); if(detail)detail.hidden=true;
+    adminToast(`Caixa #${cashId} excluído com confirmação do proprietário.`);
+    await renderCashHistory();
+  }catch(err){
+    deleteCashError(err?.message||"Não foi possível excluir o caixa.");
+  }finally{
+    button.disabled=false; button.textContent="Confirmar e excluir";
+  }
+}
