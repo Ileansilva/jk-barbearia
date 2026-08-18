@@ -13,6 +13,10 @@ ENCAIXE:
 ==========================================================
 */
 let walkinCustomers=[],walkinServices=[],walkinBarbers=[],walkinQueue=[];
+const walkinLocks=new Set();
+function walkinLock(key){if(walkinLocks.has(key))return false;walkinLocks.add(key);return true;}
+function walkinUnlock(key){walkinLocks.delete(key);}
+function walkinBusy(btn,busy,text){if(!btn)return;if(busy){btn.dataset.old=btn.textContent;btn.disabled=true;if(text)btn.textContent=text;}else{btn.disabled=false;btn.textContent=btn.dataset.old||btn.textContent;delete btn.dataset.old;}}
 const wq=s=>document.querySelector(s);
 
 document.addEventListener("DOMContentLoaded",()=>{
@@ -142,35 +146,45 @@ async function renderWalkinQueue(){
         <small>Chegou ${new Date(q.arrived_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</small>
       </div>
       <div class="walkin-actions">
-        ${waiting?`<button class="btn btn-primary" type="button" onclick="startWalkinQueue(${q.id})">Iniciar</button>`:`<button class="btn btn-primary" type="button" onclick="finishWalkinQueue(${q.id},${q.booking_id})">Concluir</button>`}
-        <button class="mini-btn danger-mini" type="button" onclick="cancelWalkinQueue(${q.id})">Cancelar</button>
+        ${waiting?`<button class="btn btn-primary" type="button" onclick="startWalkinQueue(${q.id},this)">Iniciar</button>`:`<button class="btn btn-primary" type="button" onclick="finishWalkinQueue(${q.id},${q.booking_id},this)">Concluir</button>`}
+        <button class="mini-btn danger-mini" type="button" onclick="cancelWalkinQueue(${q.id},this)">Cancelar</button>
       </div>
     </article>`;
   }).join("");
 }
 
-async function startWalkinQueue(id){
-  const {error}=await sb.rpc("start_walkin_queue",{p_queue_id:id});
-  if(error)return adminToast("Não foi possível iniciar: "+error.message,true);
-  adminToast("Atendimento iniciado e registrado nos agendamentos.");
-  await renderWalkinQueue();await renderBookings();
+async function startWalkinQueue(id,btn=null){
+  const key=`start:${id}`;if(!walkinLock(key))return;walkinBusy(btn,true,"Iniciando...");
+  try{
+    const {error}=await sb.rpc("start_walkin_queue",{p_queue_id:id});
+    if(error)throw error;
+    adminToast("Atendimento iniciado e registrado nos agendamentos.");
+    await Promise.all([renderWalkinQueue(),renderBookings()]);
+  }catch(error){adminToast("Não foi possível iniciar: "+error.message,true);}
+  finally{walkinBusy(btn,false);walkinUnlock(key);}
 }
 
-async function finishWalkinQueue(queueId,bookingId){
-  if(!bookingId)return adminToast("Atendimento não possui agendamento vinculado.",true);
-  await setStatus(bookingId,"concluido");
-  const {error}=await sb.from("walk_in_queue").update({queue_status:"concluido",finished_at:new Date().toISOString()}).eq("id",queueId);
-  if(error)return adminToast("Corte concluído, mas houve erro ao fechar a fila: "+error.message,true);
-  adminToast("Cliente concluído. Financeiro, cliente e caixa foram atualizados.");
-  await renderWalkinQueue();
+async function finishWalkinQueue(queueId,bookingId,btn=null){
+  const key=`finish:${queueId}`;if(!walkinLock(key))return;walkinBusy(btn,true,"Concluindo...");
+  if(!bookingId){walkinBusy(btn,false);walkinUnlock(key);return adminToast("Atendimento não possui agendamento vinculado.",true);}
+  try{
+    await setStatus(bookingId,"concluido");
+    const {error}=await sb.from("walk_in_queue").update({queue_status:"concluido",finished_at:new Date().toISOString()}).eq("id",queueId);
+    if(error)throw error;
+    adminToast("Cliente concluído. Financeiro, cliente e caixa foram atualizados.");
+    await renderWalkinQueue();
+  }catch(error){adminToast("Erro ao concluir cliente: "+error.message,true);}
+  finally{walkinBusy(btn,false);walkinUnlock(key);}
 }
 
-async function cancelWalkinQueue(id){
+async function cancelWalkinQueue(id,btn=null){
   if(!confirm("Remover este cliente da fila?"))return;
+  const key=`cancel:${id}`;if(!walkinLock(key))return;walkinBusy(btn,true,"Cancelando...");
   const row=walkinQueue.find(x=>Number(x.id)===Number(id));
   if(row?.booking_id)await sb.from("bookings").update({status:"cancelado",completed_at:null}).eq("id",row.booking_id);
   const {error}=await sb.from("walk_in_queue").update({queue_status:"cancelado",finished_at:new Date().toISOString()}).eq("id",id);
-  if(error)return adminToast("Erro ao cancelar: "+error.message,true);
+  if(error){walkinBusy(btn,false);walkinUnlock(key);return adminToast("Erro ao cancelar: "+error.message,true);}
   adminToast("Cliente removido da fila.");
-  await renderWalkinQueue();await renderBookings();
+  await Promise.all([renderWalkinQueue(),renderBookings()]);
+  walkinBusy(btn,false);walkinUnlock(key);
 }
