@@ -148,8 +148,24 @@ async function addCashMovement(e){
 function updateCashClosePreview(){
   const box=cashQ("#cashClosePreview");
   if(!box||!currentCashRegister)return;
-  const counted=Number(cashQ("#cashCountedAmount")?.value||0);
-  const st=cashLiveStats(),diff=counted-st.expected;
+
+  const input=cashQ("#cashCountedAmount");
+  const rawValue=String(input?.value??"").trim();
+  const st=cashLiveStats();
+
+  // Enquanto o proprietário ainda não informar o valor contado,
+  // não mostramos diferença negativa para evitar confusão.
+  if(rawValue===""){
+    box.innerHTML=`
+      <div><span>Esperado em dinheiro</span><strong>${cashMoney(st.expected)}</strong></div>
+      <div><span>Contado</span><strong>—</strong></div>
+      <div class="waiting"><span>Diferença</span><strong>Aguardando contagem</strong></div>`;
+    return;
+  }
+
+  const counted=Number(rawValue);
+  const diff=counted-st.expected;
+
   box.innerHTML=`
     <div><span>Esperado em dinheiro</span><strong>${cashMoney(st.expected)}</strong></div>
     <div><span>Contado</span><strong>${cashMoney(counted)}</strong></div>
