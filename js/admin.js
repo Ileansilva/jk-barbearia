@@ -23,6 +23,21 @@ e dados da empresa pelo painel de Configurações.
 let session=null, services=[], barbers=[], galleryItems=[], financeBookings=[], currentProfileBarberId=null;
 let serviceCropState={img:null,file:null,zoom:100,x:0,y:0};
 const $=(s)=>document.querySelector(s);
+const adminActionLocks=new Set();
+function adminLock(key){if(adminActionLocks.has(key))return false;adminActionLocks.add(key);return true;}
+function adminUnlock(key){adminActionLocks.delete(key);}
+function adminBusy(el,busy,text){
+  if(!el)return;
+  if(busy){
+    el.dataset.busyOriginal=el.textContent;
+    el.disabled=true;el.classList.add("is-busy");
+    if(text)el.textContent=text;
+  }else{
+    el.disabled=false;el.classList.remove("is-busy");
+    if(el.dataset.busyOriginal)el.textContent=el.dataset.busyOriginal;
+    delete el.dataset.busyOriginal;
+  }
+}
 
 // ===== MENSAGENS RÁPIDAS DO PAINEL =====
 function adminToast(message,error=false){
@@ -170,52 +185,81 @@ async function renderBookings(){
     <td><span class="status ${b.status}">${b.status}</span></td>
     <td>${JK.esc(b.notes||"—")}</td>
     <td><div class="action-row">
-      <button type="button" class="mini-btn" onclick="setStatus(${b.id},'concluido')">Concluir</button>
-      <button type="button" class="mini-btn" onclick="setStatus(${b.id},'confirmado')">Confirmar</button>
-      <button type="button" class="mini-btn" onclick="setStatus(${b.id},'cancelado')">Cancelar</button>
-      <button type="button" class="mini-btn" onclick="deleteBooking(${b.id})">Excluir</button>
+      <button type="button" class="mini-btn" onclick="setStatus(${b.id},'concluido',this)">Concluir</button>
+      <button type="button" class="mini-btn" onclick="setStatus(${b.id},'confirmado',this)">Confirmar</button>
+      <button type="button" class="mini-btn" onclick="setStatus(${b.id},'cancelado',this)">Cancelar</button>
+      <button type="button" class="mini-btn" onclick="deleteBooking(${b.id},this)">Excluir</button>
     </div></td>
   </tr>`).join("");
 }
 
 // ===== ALTERA STATUS DO AGENDAMENTO =====
 async function updateBookingPayment(id,method,selectEl){
+  const key=`payment:${id}`;
+  if(!adminLock(key))return;
   const value=paymentMethodClass(method);
-  const {error}=await sb.from("bookings").update({payment_method:value}).eq("id",id);
-  if(error){
+  if(selectEl)selectEl.disabled=true;
+  try{
+    const {error}=await sb.from("bookings").update({payment_method:value}).eq("id",id);
+    if(error)throw error;
+    if(selectEl)selectEl.className=`payment-admin-select ${value}`;
+    adminToast(`Pagamento alterado para ${paymentMethodLabel(value)}.`);
+  }catch(error){
     adminToast("Erro ao alterar forma de pagamento: "+error.message,true);
-    await renderBookings();
-    return;
+    renderBookings();
+  }finally{
+    if(selectEl)selectEl.disabled=false;
+    adminUnlock(key);
   }
-  if(selectEl)selectEl.className=`payment-admin-select ${value}`;
-  adminToast(`Pagamento alterado para ${paymentMethodLabel(value)}.`);
 }
 
-async function setStatus(id,status){
-  let payload={status,completed_at:status==="concluido"?new Date().toISOString():null};
-  if(status==="concluido"){
-    const {data:b,error:loadError}=await sb.from("bookings").select("id,price,barber_id,barber_commission_percent,barber_commission_amount").eq("id",id).single();
-    if(loadError)return adminToast("Erro ao carregar agendamento: "+loadError.message,true);
-    if(b?.barber_id&&(b.barber_commission_percent===null||b.barber_commission_amount===null)){
-      const cached=barbers.find(x=>Number(x.id)===Number(b.barber_id));
-      const br=cached || (await sb.from("barbers").select("*").eq("id",b.barber_id).single()).data;
-      const pct=Number(br?.commission_percent||0);
-      payload.barber_commission_percent=pct;
-      payload.barber_commission_amount=Number((Number(b.price||0)*pct/100).toFixed(2));
+async function setStatus(id,status,button=null){
+  const key=`status:${id}`;
+  if(!adminLock(key))return;
+  adminBusy(button,true,status==="concluido"?"Concluindo...":"Salvando...");
+  try{
+    let payload={status,completed_at:status==="concluido"?new Date().toISOString():null};
+    if(status==="concluido"){
+      const {data:b,error:loadError}=await sb.from("bookings")
+        .select("id,price,barber_id,barber_commission_percent,barber_commission_amount")
+        .eq("id",id).single();
+      if(loadError)throw loadError;
+      if(b?.barber_id&&(b.barber_commission_percent===null||b.barber_commission_amount===null)){
+        const cached=barbers.find(x=>Number(x.id)===Number(b.barber_id));
+        let br=cached;
+        if(!br){
+          const brRes=await sb.from("barbers").select("id,commission_percent").eq("id",b.barber_id).single();
+          if(brRes.error)throw brRes.error;
+          br=brRes.data;
+        }
+        const pct=Number(br?.commission_percent||0);
+        payload.barber_commission_percent=pct;
+        payload.barber_commission_amount=Number((Number(b.price||0)*pct/100).toFixed(2));
+      }
     }
+    const {error}=await sb.from("bookings").update(payload).eq("id",id);
+    if(error)throw error;
+    adminToast(status==="concluido"?"Corte concluído e lançado no financeiro.":"Agendamento atualizado.");
+    await renderBookings();
+  }catch(error){
+    adminToast("Erro ao atualizar: "+(error?.message||error),true);
+  }finally{
+    adminBusy(button,false);
+    adminUnlock(key);
   }
-  const {error}=await sb.from("bookings").update(payload).eq("id",id);
-  if(error)return adminToast("Erro ao atualizar: "+error.message,true);
-  adminToast(status==="concluido"?"Corte concluído e lançado no financeiro.":"Agendamento atualizado.");
-  await renderAll();
 }
 
-async function deleteBooking(id){
+async function deleteBooking(id,button=null){
   if(!confirm("Excluir este agendamento?"))return;
-  const {error}=await sb.from("bookings").delete().eq("id",id);
-  if(error)return adminToast("Erro ao excluir: "+error.message,true);
-  adminToast("Agendamento excluído.");
-  await renderAll();
+  const key=`deleteBooking:${id}`; if(!adminLock(key))return;
+  adminBusy(button,true,"Excluindo...");
+  try{
+    const {error}=await sb.from("bookings").delete().eq("id",id);
+    if(error)throw error;
+    adminToast("Agendamento excluído.");
+    await renderBookings();
+  }catch(error){adminToast("Erro ao excluir: "+error.message,true);}
+  finally{adminBusy(button,false);adminUnlock(key);}
 }
 
 // ===== CARDS E GESTÃO DE SERVIÇOS =====
