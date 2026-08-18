@@ -72,3 +72,21 @@ Visual da página Clientes:
   .customer-whatsapp-btn{grid-column:1/-1;width:100%}
   .customer-section-heading{flex-direction:column}
 }
+
+
+/* ===== STATUS DO CLIENTE / REATIVAÇÃO V22 ===== */
+.customer-status-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:5px 8px;border-radius:999px;font-size:.62rem;font-weight:900;
+  text-transform:uppercase;letter-spacing:.04em;border:1px solid rgba(255,255,255,.08)
+}
+.customer-status-badge.active{
+  color:#8bd7a6;background:rgba(65,194,116,.06);border-color:rgba(65,194,116,.18)
+}
+.customer-status-badge.inactive{
+  color:#e2a0a0;background:rgba(207,78,78,.06);border-color:rgba(207,78,78,.18)
+}
+.reactivate-mini{
+  color:#9ee0b5!important;background:rgba(65,194,116,.07)!important;border-color:rgba(65,194,116,.20)!important
+}
+.customer-table tr:has(.customer-status-badge.inactive){opacity:.72}
