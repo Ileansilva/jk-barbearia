@@ -1,0 +1,39 @@
+/*
+==========================================================
+JK BARBEARIA - CAIXA V17
+==========================================================
+*/
+.cash-open-panel{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px!important;margin-bottom:16px;background:linear-gradient(135deg,rgba(214,168,79,.07),rgba(255,255,255,.015))}
+.cash-open-copy h2{margin:.3rem 0}.cash-open-copy p{color:#868e95;margin:0}
+.cash-open-form{display:grid;grid-template-columns:220px auto;align-items:end;gap:10px}
+.cash-status-line{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:11px 14px;border:1px solid rgba(65,194,116,.12);border-radius:13px;background:rgba(65,194,116,.04)}
+.cash-live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#55c887;box-shadow:0 0 0 5px rgba(85,200,135,.08);margin-right:9px}
+.cash-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:11px}
+.cash-kpis article,.cash-payment-card{display:grid;gap:5px;padding:15px;border:1px solid rgba(255,255,255,.07);border-radius:15px;background:linear-gradient(180deg,#111416,#0b0d0f)}
+.cash-kpis span,.cash-payment-card span{font-size:.63rem;text-transform:uppercase;letter-spacing:.055em;color:#899198;font-weight:850}
+.cash-kpis strong,.cash-payment-card strong{font-size:1.18rem;color:#ede4cc}
+.cash-kpis small,.cash-payment-card small{font-size:.63rem;color:#727b83}
+.cash-kpis .cash-money strong{color:#f0d080}
+.cash-payment-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-bottom:16px}
+.cash-payment-card.pix{border-color:rgba(58,185,157,.16)}.cash-payment-card.pix strong{color:#84dbc8}
+.cash-payment-card.card{border-color:rgba(75,126,215,.16)}.cash-payment-card.card strong{color:#a9c8ff}
+.cash-payment-card.money{border-color:rgba(190,163,75,.16)}.cash-payment-card.money strong{color:#dfcf91}
+.cash-main-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.cash-close-preview{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.cash-close-preview>div{display:grid;gap:3px;padding:9px;border-radius:10px;background:rgba(255,255,255,.025)}
+.cash-close-preview span{font-size:.61rem;color:#818991}.cash-close-preview strong{font-size:.82rem}
+.cash-close-preview .negative strong,.cash-diff-negative{color:#f09595}.cash-close-preview .positive strong,.cash-diff-positive{color:#7dd7a0}.cash-close-preview .ok strong{color:#d8c27d}
+.cash-movement-list{display:grid;gap:8px}
+.cash-movement-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;border:1px solid rgba(255,255,255,.055);border-radius:12px;background:#0c0f11}
+.cash-movement-sign{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.04);font-size:1.1rem;font-weight:950}
+.cash-movement-row.entrada .cash-movement-sign,.cash-movement-row.suprimento .cash-movement-sign{color:#72d397}
+.cash-movement-row.saida .cash-movement-sign,.cash-movement-row.sangria .cash-movement-sign{color:#ee9494}
+.cash-movement-row>span:nth-child(2),.cash-movement-row>span:nth-child(3){display:grid;gap:3px}.cash-movement-row>span:nth-child(3){text-align:right}
+.cash-movement-row small{color:#7c858d;font-size:.65rem}
+.cash-history-card{margin-top:16px}.cash-history-detail{margin-top:16px}
+.cash-detail-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:17px}
+.cash-detail-summary span{display:grid;gap:3px;padding:10px;border-radius:10px;background:rgba(255,255,255,.025);color:#858d95;font-size:.65rem}.cash-detail-summary b{color:#eee6d5;font-size:.8rem}
+.cash-detail-list{display:grid;gap:6px;margin:8px 0 18px}.cash-detail-list>div{display:flex;justify-content:space-between;gap:12px;padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.025);font-size:.72rem}
+.btn-danger{background:rgba(191,67,67,.12)!important;border-color:rgba(229,93,93,.25)!important;color:#ffb2b2!important}
+@media(max-width:1050px){.cash-kpis{grid-template-columns:repeat(2,1fr)}.cash-main-grid{grid-template-columns:1fr}.cash-detail-summary{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.cash-open-panel{align-items:stretch;flex-direction:column}.cash-open-form{grid-template-columns:1fr}.cash-kpis,.cash-payment-grid{grid-template-columns:1fr}.cash-close-preview{grid-template-columns:1fr}}
