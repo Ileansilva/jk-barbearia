@@ -13,6 +13,27 @@ JK BARBEARIA - ABERTURA E FECHAMENTO DE CAIXA V17
 */
 let currentCashRegister=null,currentCashBookings=[],currentCashMovements=[];
 let pendingCashDeleteId=null,pendingCashDeleteRow=null;
+const cashActionLocks=new Set();
+
+function cashLock(key){
+  if(cashActionLocks.has(key))return false;
+  cashActionLocks.add(key);return true;
+}
+function cashUnlock(key){cashActionLocks.delete(key);}
+function cashSetBusy(button,busy,label){
+  if(!button)return;
+  if(busy){
+    button.dataset.originalText=button.textContent;
+    button.disabled=true;
+    button.classList.add("is-busy");
+    button.textContent=label||"Salvando...";
+  }else{
+    button.disabled=false;
+    button.classList.remove("is-busy");
+    button.textContent=button.dataset.originalText||button.textContent;
+    delete button.dataset.originalText;
+  }
+}
 const cashQ=s=>document.querySelector(s);
 
 document.addEventListener("DOMContentLoaded",()=>{
@@ -29,32 +50,45 @@ document.addEventListener("DOMContentLoaded",()=>{
 });
 
 async function renderCashAdmin(){
-  const {data:open,error}=await sb.from("cash_registers").select("*").eq("status","aberto").maybeSingle();
-  if(error)return adminToast("Erro ao carregar caixa: "+error.message,true);
-  currentCashRegister=open||null;
+  if(!cashLock("render"))return;
+  try{
+    const openPromise=sb.from("cash_registers").select("*").eq("status","aberto").maybeSingle();
+    const historyPromise=renderCashHistory();
 
-  cashQ("#cashClosedState").hidden=!!currentCashRegister;
-  cashQ("#cashOpenState").hidden=!currentCashRegister;
+    const {data:open,error}=await openPromise;
+    if(error)return adminToast("Erro ao carregar caixa: "+error.message,true);
 
-  if(currentCashRegister)await loadOpenCashDetails();
-  await renderCashHistory();
+    currentCashRegister=open||null;
+    cashQ("#cashClosedState").hidden=!!currentCashRegister;
+    cashQ("#cashOpenState").hidden=!currentCashRegister;
+
+    if(currentCashRegister)await loadOpenCashDetails();
+    await historyPromise;
+  }finally{cashUnlock("render");}
 }
 
 async function openCashRegister(e){
   e.preventDefault();
+  if(!cashLock("open"))return;
   const amount=Number(cashQ("#cashOpeningAmount")?.value||0);
-  if(amount<0)return adminToast("Valor inicial inválido.",true);
-
   const btn=e.currentTarget.querySelector("button");
-  if(btn){btn.disabled=true;btn.textContent="Abrindo...";}
-  const {error}=await sb.from("cash_registers").insert({opening_amount:amount});
-  if(btn){btn.disabled=false;btn.textContent="Abrir caixa";}
-  if(error){
-    if(String(error.message).toLowerCase().includes("duplicate"))return adminToast("Já existe um caixa aberto.",true);
-    return adminToast("Erro ao abrir caixa: "+error.message,true);
-  }
-  adminToast("Caixa aberto com sucesso.");
-  await renderCashAdmin();
+  if(amount<0){cashUnlock("open");return adminToast("Valor inicial inválido.",true);}
+  cashSetBusy(btn,true,"Abrindo caixa...");
+  try{
+    const {data,error}=await sb.from("cash_registers").insert({opening_amount:amount}).select("*").single();
+    if(error)throw error;
+    currentCashRegister=data;
+    currentCashBookings=[];currentCashMovements=[];
+    cashQ("#cashClosedState").hidden=true;
+    cashQ("#cashOpenState").hidden=false;
+    renderOpenCashNumbers();
+    renderCashMovements();
+    adminToast("Caixa aberto com sucesso.");
+    renderCashHistory(); // sincroniza sem travar a ação principal
+  }catch(error){
+    if(String(error?.message||"").toLowerCase().includes("duplicate"))adminToast("Já existe um caixa aberto.",true);
+    else adminToast("Erro ao abrir caixa: "+(error?.message||error),true);
+  }finally{cashSetBusy(btn,false);cashUnlock("open");}
 }
 
 async function loadOpenCashDetails(){
@@ -130,19 +164,32 @@ function renderCashMovements(){
 async function addCashMovement(e){
   e.preventDefault();
   if(!currentCashRegister)return adminToast("Abra o caixa primeiro.",true);
+  if(!cashLock("movement"))return;
+
   const type=cashQ("#cashMovementType").value;
   const amount=Number(cashQ("#cashMovementAmount").value||0);
   const description=String(cashQ("#cashMovementDescription").value||"").trim();
-  if(amount<=0)return adminToast("Informe um valor maior que zero.",true);
-  if(description.length<2)return adminToast("Informe a descrição.",true);
+  const btn=e.currentTarget.querySelector('button[type="submit"]');
 
-  const {error}=await sb.from("cash_movements").insert({
-    cash_register_id:currentCashRegister.id,movement_type:type,amount,description
-  });
-  if(error)return adminToast("Erro ao registrar movimentação: "+error.message,true);
-  e.currentTarget.reset();
-  adminToast("Movimentação registrada.");
-  await loadOpenCashDetails();
+  if(amount<=0){cashUnlock("movement");return adminToast("Informe um valor maior que zero.",true);}
+  if(description.length<2){cashUnlock("movement");return adminToast("Informe a descrição.",true);}
+
+  cashSetBusy(btn,true,"Registrando...");
+  try{
+    const {data,error}=await sb.from("cash_movements").insert({
+      cash_register_id:currentCashRegister.id,movement_type:type,amount,description
+    }).select("*").single();
+    if(error)throw error;
+
+    // Atualização instantânea sem recarregar todas as consultas.
+    currentCashMovements=[data,...currentCashMovements.filter(x=>Number(x.id)!==Number(data.id))];
+    renderOpenCashNumbers();
+    renderCashMovements();
+    e.currentTarget.reset();
+    adminToast("Movimentação registrada.");
+  }catch(error){
+    adminToast("Erro ao registrar movimentação: "+(error?.message||error),true);
+  }finally{cashSetBusy(btn,false);cashUnlock("movement");}
 }
 
 function updateCashClosePreview(){
@@ -175,25 +222,31 @@ function updateCashClosePreview(){
 async function closeCashRegister(e){
   e.preventDefault();
   if(!currentCashRegister)return adminToast("Nenhum caixa aberto.",true);
+  if(!cashLock("close"))return;
   const counted=Number(cashQ("#cashCountedAmount").value);
   const notes=String(cashQ("#cashCloseNotes").value||"").trim();
   const st=cashLiveStats(),diff=counted-st.expected;
 
-  if(!Number.isFinite(counted)||counted<0)return adminToast("Informe o dinheiro contado.",true);
+  if(!Number.isFinite(counted)||counted<0){cashUnlock("close");return adminToast("Informe o dinheiro contado.",true);}
   if(Math.abs(diff)>=0.01&&!notes){
-    return adminToast("Há diferença no caixa. Informe uma observação antes de fechar.",true);
+    cashUnlock("close"); return adminToast("Há diferença no caixa. Informe uma observação antes de fechar.",true);
   }
-  if(!confirm(`Fechar o caixa?\nEsperado: ${cashMoney(st.expected)}\nContado: ${cashMoney(counted)}\nDiferença: ${cashMoney(diff)}`))return;
+  if(!confirm(`Fechar o caixa?\nEsperado: ${cashMoney(st.expected)}\nContado: ${cashMoney(counted)}\nDiferença: ${cashMoney(diff)}`)){cashUnlock("close");return;}
 
   const btn=e.currentTarget.querySelector("button");
-  if(btn){btn.disabled=true;btn.textContent="Fechando...";}
-  const {error}=await sb.rpc("close_cash_register",{p_counted_cash:counted,p_notes:notes});
-  if(btn){btn.disabled=false;btn.textContent="Fechar caixa";}
-  if(error)return adminToast("Erro ao fechar caixa: "+error.message,true);
-
-  adminToast("Caixa fechado e conferido.");
-  e.currentTarget.reset();
-  await renderCashAdmin();
+  cashSetBusy(btn,true,"Fechando caixa...");
+  try{
+    const {error}=await sb.rpc("close_cash_register",{p_counted_cash:counted,p_notes:notes});
+    if(error)throw error;
+    adminToast("Caixa fechado e conferido.");
+    e.currentTarget.reset();
+    currentCashRegister=null;currentCashBookings=[];currentCashMovements=[];
+    cashQ("#cashClosedState").hidden=false;
+    cashQ("#cashOpenState").hidden=true;
+    await renderCashHistory();
+  }catch(error){
+    adminToast("Erro ao fechar caixa: "+(error?.message||error),true);
+  }finally{cashSetBusy(btn,false);cashUnlock("close");}
 }
 
 async function renderCashHistory(){
