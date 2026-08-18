@@ -1,0 +1,49 @@
+
+/* JK BARBEARIA - CORREÇÕES GLOBAIS FRONT-END V23 */
+input:not([type="radio"]):not([type="checkbox"]),textarea,select{
+  color:#f5f1e8!important;caret-color:#e3bd68!important;background-color:#0d1012;
+}
+input::placeholder,textarea::placeholder{color:#929aa2!important;opacity:1!important}
+select option{color:#f5f1e8!important;background:#101315!important}
+input:focus,textarea:focus,select:focus{
+  color:#fff!important;border-color:rgba(224,184,91,.72)!important;
+  outline:none!important;box-shadow:0 0 0 3px rgba(214,168,79,.11)!important
+}
+input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus{
+  -webkit-text-fill-color:#f5f1e8!important;-webkit-box-shadow:0 0 0 1000px #101315 inset!important
+}
+.customer-search-input>span{color:#e3bd68!important;opacity:1!important}
+#customerSearch{color:#fff!important;caret-color:#e3bd68!important}
+#customerSearch::placeholder{color:#9ca3aa!important}
+.sidebar .side-link>span{color:#d8bd77!important;opacity:1!important;text-shadow:0 0 10px rgba(214,168,79,.15)}
+.sidebar .side-link.active>span{color:#fff0bd!important}
+.booking-barber-check,.payment-method-icon,.customer-special-icon,.cash-movement-sign,.walkin-position{opacity:1!important}
+
+.booking-open-box{
+  display:grid;gap:5px;margin:14px 0;padding:14px;border-radius:13px;
+  border:1px solid rgba(70,204,122,.28);
+  background:linear-gradient(135deg,rgba(59,177,104,.10),rgba(59,177,104,.035));
+  color:#baf1cd
+}
+.booking-open-box[hidden]{display:none!important}
+.booking-open-box strong{font-size:.88rem;color:#bff4cf}
+.booking-open-box span{font-size:.75rem;color:#91cba6}
+
+.new-booking-realtime-alert{
+  position:fixed;top:18px;right:18px;z-index:100000;width:min(560px,calc(100vw - 36px));
+  display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:center;gap:13px;
+  padding:15px;border-radius:18px;border:1px solid rgba(214,168,79,.42);
+  background:linear-gradient(135deg,#17140d,#101315 55%);color:#f6f1e7;
+  box-shadow:0 25px 70px rgba(0,0,0,.58)
+}
+.new-booking-realtime-alert[hidden]{display:none!important}
+.new-booking-alert-icon{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;background:rgba(214,168,79,.11);border:1px solid rgba(214,168,79,.23);font-size:1.45rem}
+.new-booking-alert-content{display:grid;gap:3px;min-width:0}
+.new-booking-alert-content>span{color:#d7b862;text-transform:uppercase;letter-spacing:.07em;font-size:.58rem;font-weight:900}
+.new-booking-alert-content strong{color:#fff5d6;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.new-booking-alert-content p{margin:0;color:#9fa6ac;font-size:.71rem}
+.new-booking-alert-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:720px){
+  .new-booking-realtime-alert{grid-template-columns:44px minmax(0,1fr);top:10px;right:10px;width:calc(100vw - 20px)}
+  .new-booking-alert-actions{grid-column:1/-1}.new-booking-alert-actions .btn{flex:1}
+}
