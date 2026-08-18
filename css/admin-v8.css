@@ -1,14 +1,40 @@
+/*
+==========================================================
+JK BARBEARIA - ARQUIVO DE ESTILO: admin-v8.css
+==========================================================
+Este arquivo controla parte do visual do sistema.
+
+DICA PARA REVENDA:
+- cores principais: procure por #d6a84f / #f0c85a / dourado
+- fundos: procure por #070809 / #0b0d0f / preto
+- bordas e sombras: rgba(...)
+- tamanhos e responsividade: /* ===== RESPONSIVIDADE / CELULAR / TABLET ===== */
+@media
+Evite apagar classes sem verificar onde são usadas.
+==========================================================
+*/
+
 /* JK Barbearia — Administração multipágina V8 */
 .admin-multipage .admin-wrap{grid-template-columns:238px minmax(0,1fr)!important}
-.admin-multipage .sidebar{display:flex;flex-direction:column;gap:18px}
+.admin-multipage /* ===== MENU LATERAL DO ADMINISTRADOR ===== */
+.sidebar{display:flex;flex-direction:column;gap:18px}
 .admin-sidebar-logo{display:grid;place-items:center;padding:4px 0 10px}
 .side-nav-links{display:grid!important;grid-template-columns:1fr!important;gap:6px!important;overflow:visible!important}
 .side-link,.side-button{width:100%;min-height:44px;display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:12px;border:1px solid transparent;background:transparent;color:#b9bec5;text-align:left;font:700 .84rem/1 system-ui;text-decoration:none;cursor:pointer;transition:.18s ease}
 .side-link span{width:22px;text-align:center;color:#d6a84f;font-size:1rem}.side-link:hover,.side-link.active{color:#f7f2e9;background:rgba(214,168,79,.075);border-color:rgba(214,168,79,.18)}.side-link.active{box-shadow:inset 3px 0 #d6a84f}.sidebar-bottom{margin-top:auto;display:grid;gap:6px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)}
 .admin-page-heading h1{margin:.25rem 0 0;font-size:1.65rem}.admin-top-actions{display:flex;gap:9px}.admin-multipage .panel{display:block!important}.admin-multipage .admin-main{max-width:1600px;width:100%;margin:0 auto}
 /* Finance search/report */
+/* ===== ÁREA FINANCEIRA ===== */
 .finance-report-detail{border:1px solid rgba(214,168,79,.15)!important;background:linear-gradient(180deg,#0d1118,#090c12)!important}.finance-monthly-report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:12px 0 24px}.finance-month-report{padding:16px;border-radius:16px;border:1px solid rgba(255,255,255,.075);background:rgba(255,255,255,.025)}.finance-month-report>span{display:block;color:#d6a84f;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;font-weight:800}.finance-month-report>strong{display:block;font-size:1.3rem;margin:8px 0 11px}.finance-month-report>div{display:grid;gap:4px;color:#9ba2aa}.finance-report-table-wrap{padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}.finance-report-table-wrap h3{margin:0 0 12px}.finance-name-link{display:flex;align-items:center;gap:9px;border:0;background:transparent;color:#f4eee5;font-weight:800;cursor:pointer}.finance-name-link img{width:34px!important;height:34px!important;border-radius:50%!important;object-fit:cover!important;margin:0!important}.finance-week-title{display:grid!important;gap:6px!important;align-items:start!important}.week-number{font-size:1rem!important;color:#d6a84f}.week-range{font-size:.78rem;color:#a8afb7}.week-range b{font-weight:500;color:#67707a;margin:0 5px}.finance-week-stats{margin-top:12px}.finance-filters-v5{align-items:end}.filter-field input,.filter-field select{color-scheme:dark}
 /* Separate page cards */
-.admin-multipage #barberAdminGrid.barber-admin-grid{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))!important}.admin-multipage .service-admin-grid{grid-template-columns:repeat(auto-fit,minmax(270px,1fr))!important}
+.admin-multipage #barberAdminGrid/* ===== BARBEIROS ===== */
+.barber-admin-grid{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))!important}.admin-multipage /* ===== SERVIÇOS ===== */
+.service-admin-grid{grid-template-columns:repeat(auto-fit,minmax(270px,1fr))!important}
 @media(max-width:900px){.admin-multipage .admin-wrap{grid-template-columns:1fr!important}.admin-multipage .sidebar{position:static!important;height:auto!important}.side-nav-links{grid-template-columns:repeat(3,minmax(140px,1fr))!important;display:grid!important;overflow:auto!important}.sidebar-bottom{grid-template-columns:1fr 1fr;margin-top:0}.admin-sidebar-logo{display:none}.admin-multipage .admin-top{position:static!important}}
 @media(max-width:620px){.side-nav-links{grid-template-columns:repeat(2,minmax(135px,1fr))!important}.admin-multipage .admin-main{padding:14px 10px 45px!important}.admin-multipage .admin-top{margin:0 0 16px!important;padding:10px 2px!important}.admin-top-actions{display:none}.finance-monthly-report-grid{grid-template-columns:1fr}.finance-report-table{min-width:680px}}
+
+
+/* ===== PERFORMANCE / FEEDBACK DE AÇÕES V20 ===== */
+button.is-busy,.btn.is-busy,.mini-btn.is-busy{cursor:wait!important;opacity:.72!important;pointer-events:none!important}
+button:disabled,.btn:disabled,.mini-btn:disabled{cursor:not-allowed;opacity:.62}
+select:disabled,input:disabled,textarea:disabled{opacity:.72;cursor:wait}
