@@ -17,6 +17,9 @@ O envio final é feito pelo proprietário no próprio WhatsApp.
 */
 
 let customerCRMCustomers=[];
+const customerActionLocks=new Set();
+function customerLock(key){if(customerActionLocks.has(key))return false;customerActionLocks.add(key);return true;}
+function customerUnlock(key){customerActionLocks.delete(key);}
 let customerCRMBookings=[];
 let customerCRMSettings=null;
 let customerCRMView=[];
@@ -396,6 +399,7 @@ function editCustomer(id){
 
 async function saveCustomer(e){
   e.preventDefault();
+  if(!customerLock("save"))return;
 
   const id=Number(cq("#customerId")?.value||0);
   const fullName=String(cq("#customerFullName")?.value||"").trim();
@@ -404,11 +408,11 @@ async function saveCustomer(e){
   const birthDate=cq("#customerBirthDate")?.value||null;
   const notes=String(cq("#customerNotes")?.value||"").trim();
 
-  if(fullName.length<3)return adminToast("Informe o nome completo do cliente.",true);
-  if(digits.length<10)return adminToast("Informe um WhatsApp válido.",true);
+  if(fullName.length<3){customerUnlock("save");return adminToast("Informe o nome completo do cliente.",true);}
+  if(digits.length<10){customerUnlock("save");return adminToast("Informe um WhatsApp válido.",true);}
 
   const duplicate=customerCRMCustomers.find(c=>c.phone_digits===digits&&Number(c.id)!==id);
-  if(duplicate)return adminToast(`Esse WhatsApp já está cadastrado para ${duplicate.full_name}.`,true);
+  if(duplicate){customerUnlock("save");return adminToast(`Esse WhatsApp já está cadastrado para ${duplicate.full_name}.`,true);}
 
   const btn=e.currentTarget.querySelector('button[type="submit"]');
   const old=btn?.textContent||"Salvar cliente";
@@ -426,21 +430,31 @@ async function saveCustomer(e){
 
   let result;
   if(id){
-    result=await sb.from("jk_customers").update(payload).eq("id",id);
+    result=await sb.from("jk_customers").update(payload).eq("id",id).select("*").single();
   }else{
-    result=await sb.from("jk_customers").insert(payload);
+    result=await sb.from("jk_customers").insert(payload).select("*").single();
   }
 
-  if(btn){btn.disabled=false;btn.textContent=old;}
-
   if(result.error){
+    if(btn){btn.disabled=false;btn.textContent=old;}
+    customerUnlock("save");
     adminToast("Erro ao salvar cliente: "+result.error.message,true);
     return;
   }
 
+  const saved=result.data;
+  if(id){
+    customerCRMCustomers=customerCRMCustomers.map(c=>Number(c.id)===Number(id)?saved:c);
+  }else{
+    customerCRMCustomers=[...customerCRMCustomers,saved];
+  }
+  customerCRMView=customerCRMCustomers.map(buildCustomerView);
+  updateCustomerKPIs();renderBirthdayCustomers();renderInactiveCustomers();renderCustomerTable();
+
+  if(btn){btn.disabled=false;btn.textContent=old;}
+  customerUnlock("save");
   adminToast(id?"Cliente atualizado.":"Cliente cadastrado.");
   resetCustomerForm();
-  await loadCustomerCRM();
 }
 
 async function deactivateCustomer(id){
@@ -460,12 +474,14 @@ async function deactivateCustomer(id){
 
 // ===== SALVA TEMPO DE RETORNO E MENSAGENS =====
 async function saveCustomerRules(){
+  if(!customerLock("rules"))return;
+  const btn=cq("#saveCustomerRulesBtn"); if(btn){btn.disabled=true;btn.textContent="Salvando...";}
   const days=inactiveThreshold();
   const birthday=String(cq("#birthdayMessageTemplate")?.value||"").trim();
   const inactive=String(cq("#inactiveMessageTemplate")?.value||"").trim();
 
-  if(!birthday)return adminToast("A mensagem de aniversário não pode ficar vazia.",true);
-  if(!inactive)return adminToast("A mensagem de retorno não pode ficar vazia.",true);
+  if(!birthday){if(btn){btn.disabled=false;btn.textContent="Salvar regras";}customerUnlock("rules");return adminToast("A mensagem de aniversário não pode ficar vazia.",true);}
+  if(!inactive){if(btn){btn.disabled=false;btn.textContent="Salvar regras";}customerUnlock("rules");return adminToast("A mensagem de retorno não pode ficar vazia.",true);}
 
   const {error}=await sb.from("settings").update({
     customer_inactive_days:days,
@@ -473,7 +489,7 @@ async function saveCustomerRules(){
     inactive_message_template:inactive
   }).eq("id",1);
 
-  if(error)return adminToast("Erro ao salvar regras: "+error.message,true);
+  if(error){if(btn){btn.disabled=false;btn.textContent="Salvar regras";}customerUnlock("rules");return adminToast("Erro ao salvar regras: "+error.message,true);}
 
   customerCRMSettings={
     ...(customerCRMSettings||{}),
@@ -482,6 +498,8 @@ async function saveCustomerRules(){
     inactive_message_template:inactive
   };
 
+  if(btn){btn.disabled=false;btn.textContent="Salvar regras";}
+  customerUnlock("rules");
   adminToast("Regras de clientes e mensagens salvas.");
   updateCustomerKPIs();
   renderInactiveCustomers();
