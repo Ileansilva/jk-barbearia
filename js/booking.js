@@ -20,6 +20,7 @@ let selectedTime="";
 let settings=null;
 let services=[];
 let barbers=[];
+let bookingStatusTimer=null;
 
 const qs=(s)=>document.querySelector(s);
 
@@ -174,8 +175,6 @@ function applySettingsToBooking(){
   const hours=qs("#bookingHoursLabel");
   const days=qs("#bookingDaysLabel");
   const notice=qs("#bookingNoticeBox");
-  const closed=qs("#bookingClosedBox");
-  const form=qs("#bookingForm");
 
   const open=String(settings.open_time||"08:00").slice(0,5);
   const close=String(settings.close_time||"19:00").slice(0,5);
@@ -198,13 +197,117 @@ function applySettingsToBooking(){
     notice.textContent=text;
   }
 
-  const enabled=settings.booking_enabled!==false;
-  if(closed)closed.hidden=enabled;
-  if(form){
-    form.querySelectorAll("input,select,textarea,button").forEach(el=>{
-      if(el.id!=="") el.disabled=!enabled;
-      else if(el.type==="submit") el.disabled=!enabled;
-    });
+  applyAutomaticBookingStatus();
+
+  // Reavalia sozinho a cada 30 segundos.
+  if(bookingStatusTimer)clearInterval(bookingStatusTimer);
+  bookingStatusTimer=setInterval(applyAutomaticBookingStatus,30000);
+}
+
+// ===== HORÁRIO ATUAL DA BARBEARIA (AMERICA/SAO_PAULO) =====
+function saoPauloNowParts(){
+  const parts=new Intl.DateTimeFormat("en-US",{
+    timeZone:"America/Sao_Paulo",
+    weekday:"short",
+    hour:"2-digit",
+    minute:"2-digit",
+    second:"2-digit",
+    hourCycle:"h23"
+  }).formatToParts(new Date());
+
+  const get=type=>parts.find(p=>p.type===type)?.value||"";
+  const weekdayMap={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
+
+  return {
+    weekday:weekdayMap[get("weekday")],
+    time:`${get("hour")}:${get("minute")}:${get("second")}`
+  };
+}
+
+function normalizeTimeSeconds(value,fallback){
+  const raw=String(value||fallback||"00:00:00");
+  const parts=raw.split(":");
+  return `${String(parts[0]||"00").padStart(2,"0")}:${String(parts[1]||"00").padStart(2,"0")}:${String(parts[2]||"00").padStart(2,"0")}`;
+}
+
+function bookingBusinessState(){
+  if(!settings)return {available:false,reason:"loading"};
+
+  // O proprietário pode desligar o agendamento manualmente.
+  if(settings.booking_enabled===false){
+    return {available:false,reason:"manual"};
+  }
+
+  const now=saoPauloNowParts();
+  const workDays=(settings.work_days||[]).map(Number);
+  const open=normalizeTimeSeconds(settings.open_time,"08:00:00");
+  const close=normalizeTimeSeconds(settings.close_time,"19:00:00");
+
+  if(workDays.length&&!workDays.includes(now.weekday)){
+    return {available:false,reason:"day",open,close};
+  }
+
+  if(now.time<open){
+    return {available:false,reason:"before",open,close};
+  }
+
+  if(now.time>close){
+    return {available:false,reason:"after",open,close};
+  }
+
+  return {available:true,reason:"open",open,close};
+}
+
+function setBookingFormEnabled(enabled){
+  const form=qs("#bookingForm");
+  if(!form)return;
+
+  form.querySelectorAll("input,select,textarea,button").forEach(el=>{
+    el.disabled=!enabled;
+  });
+
+  // Mantém elementos puramente visuais dos cards sincronizados.
+  document.querySelectorAll(".booking-barber-card,.time-btn").forEach(el=>{
+    el.disabled=!enabled;
+  });
+}
+
+function applyAutomaticBookingStatus(){
+  if(!settings)return;
+
+  const closed=qs("#bookingClosedBox");
+  const state=bookingBusinessState();
+
+  if(closed){
+    closed.hidden=state.available;
+
+    const title=closed.querySelector("strong");
+    const description=closed.querySelector("span");
+
+    if(!state.available){
+      if(state.reason==="manual"){
+        if(title)title.textContent="Agendamento online temporariamente indisponível";
+        if(description)description.textContent="Entre em contato com a barbearia para mais informações.";
+      }else if(state.reason==="day"){
+        if(title)title.textContent="Barbearia fechada hoje";
+        if(description)description.textContent="O agendamento online volta a ficar disponível no próximo dia de atendimento.";
+      }else if(state.reason==="before"){
+        if(title)title.textContent="Barbearia ainda não abriu";
+        if(description)description.textContent=`O agendamento online será liberado às ${String(settings.open_time||"08:00").slice(0,5)}.`;
+      }else{
+        if(title)title.textContent="Barbearia fechada agora";
+        if(description)description.textContent=`O atendimento de hoje encerrou às ${String(settings.close_time||"19:00").slice(0,5)}.`;
+      }
+    }
+  }
+
+  setBookingFormEnabled(state.available);
+
+  // Se acabou de fechar enquanto o usuário estava escolhendo horário,
+  // limpa o horário selecionado para impedir confirmação indevida.
+  if(!state.available&&selectedTime){
+    selectedTime="";
+    renderSummary();
   }
 }
 
@@ -354,6 +457,12 @@ async function submitBooking(e){
   const serviceId=Number(f.get("service")||0);
   const bookingDate=String(f.get("date")||"");
   const paymentMethod=String(f.get("payment_method")||"").toLowerCase();
+
+  const businessState=bookingBusinessState();
+  if(!businessState.available){
+    applyAutomaticBookingStatus();
+    return toast("O agendamento online está indisponível neste momento.","error");
+  }
 
   if(name.length<2)return toast("Digite seu nome.","error");
   if(phone.length<8)return toast("Digite um WhatsApp válido.","error");
