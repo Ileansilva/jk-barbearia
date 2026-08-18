@@ -1,5 +1,23 @@
+/*
+==========================================================
+JK BARBEARIA - ARQUIVO DE ESTILO: booking-v9.css
+==========================================================
+Este arquivo controla parte do visual do sistema.
+
+DICA PARA REVENDA:
+- cores principais: procure por #d6a84f / #f0c85a / dourado
+- fundos: procure por #070809 / #0b0d0f / preto
+- bordas e sombras: rgba(...)
+- tamanhos e responsividade: /* ===== RESPONSIVIDADE / CELULAR / TABLET ===== */
+@media
+
+Evite apagar classes sem verificar onde são usadas.
+==========================================================
+*/
+
 
 /* JK Barbearia — Agendamento V9 */
+/* ===== PÁGINA DE AGENDAMENTO ===== */
 .booking-date-shell{display:grid;gap:7px}
 .booking-date-shell input[type="date"]{
   width:100%;
@@ -73,3 +91,21 @@
 .booking-closed-box{display:grid;gap:5px;margin:14px 0;padding:14px;border-radius:13px;border:1px solid rgba(226,85,85,.18);background:rgba(226,85,85,.055);color:#f0b8b8}
 .booking-closed-box span{font-size:.75rem;color:#bd9b9b}
 @media(max-width:520px){.booking-settings-info{grid-template-columns:1fr}}
+
+
+/* ===== STATUS AUTOMÁTICO DO HORÁRIO DE FUNCIONAMENTO V21 ===== */
+/* O atributo hidden precisa sempre vencer o display:grid da caixa fechada. */
+.booking-closed-box[hidden],
+.booking-client-notice[hidden]{
+  display:none!important;
+}
+.booking-closed-box:not([hidden]){
+  display:grid!important;
+}
+#bookingForm input:disabled,
+#bookingForm select:disabled,
+#bookingForm textarea:disabled,
+#bookingForm button:disabled{
+  opacity:.5;
+  cursor:not-allowed!important;
+}
