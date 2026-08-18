@@ -276,7 +276,17 @@ function applyAutomaticBookingStatus(){
   if(!settings)return;
 
   const closed=qs("#bookingClosedBox");
+  const openBox=qs("#bookingOpenBox");
+  const openMessage=qs("#bookingOpenMessage");
   const state=bookingBusinessState();
+
+  if(openBox){
+    openBox.hidden=!state.available;
+    if(state.available&&openMessage){
+      const close=String(settings.close_time||"19:00").slice(0,5);
+      openMessage.textContent=`Agendamentos online disponíveis até ${close}.`;
+    }
+  }
 
   if(closed){
     closed.hidden=state.available;
