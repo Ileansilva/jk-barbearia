@@ -137,6 +137,30 @@
   </main>
 </div>
 
+
+<!-- ===== EXCLUSÃO SEGURA DE CAIXA V18 ===== -->
+<div id="deleteCashModal" class="cash-auth-modal" hidden>
+  <div class="cash-auth-backdrop" data-close-cash-delete></div>
+  <section class="cash-auth-card" role="dialog" aria-modal="true">
+    <button id="closeDeleteCashModalBtn" class="cash-auth-close" type="button">×</button>
+    <div class="cash-auth-icon">🔐</div>
+    <span class="eyebrow">Ação protegida</span>
+    <h2>Excluir caixa</h2>
+    <p>Confirme novamente o e-mail e a senha do proprietário. Os atendimentos não serão apagados.</p>
+    <div id="deleteCashSummary" class="cash-delete-summary"></div>
+    <form id="deleteCashAuthForm">
+      <div class="field"><label>E-mail do proprietário</label><input id="deleteCashEmail" type="email" autocomplete="username" required></div>
+      <div class="field"><label>Senha</label><input id="deleteCashPassword" type="password" autocomplete="current-password" required></div>
+      <div id="deleteCashError" class="cash-auth-error" hidden></div>
+      <div class="cash-auth-actions">
+        <button id="cancelDeleteCashBtn" class="btn btn-outline" type="button">Cancelar</button>
+        <button id="confirmDeleteCashBtn" class="btn btn-danger" type="submit">Confirmar e excluir</button>
+      </div>
+    </form>
+    <small class="cash-auth-warning">Somente caixas fechados podem ser excluídos.</small>
+  </section>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
 <script src="js/supabase-client.js"></script>
