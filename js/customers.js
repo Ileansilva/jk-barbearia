@@ -64,7 +64,7 @@ async function renderCustomersAdmin(){
 // ===== CARREGAMENTO DOS DADOS =====
 async function loadCustomerCRM(){
   const rows=cq("#customerRows");
-  if(rows)rows.innerHTML='<tr><td colspan="7">Carregando clientes...</td></tr>';
+  if(rows)rows.innerHTML='<tr><td colspan="8">Carregando clientes...</td></tr>';
 
   const [customersRes,bookingsRes,settingsRes]=await Promise.all([
     sb.from("jk_customers").select("*").order("full_name"),
@@ -324,18 +324,24 @@ function filteredCustomerList(){
   const filter=cq("#customerFilter")?.value||"all";
 
   return customerCRMView.filter(c=>{
-    if(c.active===false)return false;
-
     const searchable=`${c.full_name} ${c.phone} ${c.phone_digits}`.toLowerCase();
     if(term&&!searchable.includes(term))return false;
 
-    if(filter==="birthday"&&!c.birthdayToday)return false;
-    if(filter==="inactive"&&!isInactiveCustomer(c))return false;
-    if(filter==="with-birthday"&&!c.birth_date)return false;
-    if(filter==="without-birthday"&&c.birth_date)return false;
+    // Por padrão mostramos os ativos. Clientes inativos aparecem
+    // quando o usuário pesquisa pelo nome/telefone ou escolhe o filtro Inativos.
+    if(c.active===false && filter!=="inactive-status" && !term)return false;
+    if(filter==="inactive-status"&&c.active!==false)return false;
+
+    if(filter==="birthday"&&(!c.birthdayToday||c.active===false))return false;
+    if(filter==="inactive"&&(!isInactiveCustomer(c)||c.active===false))return false;
+    if(filter==="with-birthday"&&(!c.birth_date||c.active===false))return false;
+    if(filter==="without-birthday"&&(c.birth_date||c.active===false))return false;
 
     return true;
-  }).sort((a,b)=>a.full_name.localeCompare(b.full_name,"pt-BR"));
+  }).sort((a,b)=>{
+    if(a.active!==b.active)return a.active===false?1:-1;
+    return a.full_name.localeCompare(b.full_name,"pt-BR");
+  });
 }
 
 function renderCustomerTable(){
@@ -344,7 +350,7 @@ function renderCustomerTable(){
 
   const list=filteredCustomerList();
   if(!list.length){
-    root.innerHTML='<tr><td colspan="7"><div class="empty">Nenhum cliente encontrado com esse filtro.</div></td></tr>';
+    root.innerHTML='<tr><td colspan="8"><div class="empty">Nenhum cliente encontrado com esse filtro.</div></td></tr>';
     return;
   }
 
@@ -364,10 +370,13 @@ function renderCustomerTable(){
       <td><strong>${c.visitCount}</strong></td>
       <td><strong>${JK.money(c.revenue)}</strong></td>
       <td><button type="button" class="mini-btn whatsapp-mini" onclick="openCustomerWhatsApp(${c.id},'inactive')">WhatsApp</button></td>
+      <td><span class="customer-status-badge ${c.active===false?"inactive":"active"}">${c.active===false?"Inativo":"Ativo"}</span></td>
       <td>
         <div class="action-row">
           <button type="button" class="mini-btn primary-mini" onclick="editCustomer(${c.id})">Editar</button>
-          <button type="button" class="mini-btn danger-mini" onclick="deactivateCustomer(${c.id})">Inativar</button>
+          ${c.active===false
+            ? `<button type="button" class="mini-btn reactivate-mini" onclick="reactivateCustomer(${c.id})">Reativar</button>`
+            : `<button type="button" class="mini-btn danger-mini" onclick="deactivateCustomer(${c.id})">Inativar</button>`}
         </div>
       </td>
     </tr>`;
@@ -412,7 +421,48 @@ async function saveCustomer(e){
   if(digits.length<10){customerUnlock("save");return adminToast("Informe um WhatsApp válido.",true);}
 
   const duplicate=customerCRMCustomers.find(c=>c.phone_digits===digits&&Number(c.id)!==id);
-  if(duplicate){customerUnlock("save");return adminToast(`Esse WhatsApp já está cadastrado para ${duplicate.full_name}.`,true);}
+  if(duplicate&&duplicate.active!==false){
+    customerUnlock("save");
+    return adminToast(`Esse WhatsApp já está cadastrado para ${duplicate.full_name}.`,true);
+  }
+
+  // Se o número pertence a um cliente inativo, reaproveitamos o cadastro
+  // em vez de bloquear o usuário com "WhatsApp já cadastrado".
+  if(duplicate&&duplicate.active===false&&!id){
+    const btn=e.currentTarget.querySelector('button[type="submit"]');
+    const old=btn?.textContent||"Salvar cliente";
+    if(btn){btn.disabled=true;btn.textContent="Reativando cliente...";}
+
+    const payload={
+      full_name:fullName,
+      phone,
+      phone_digits:digits,
+      birth_date:birthDate||duplicate.birth_date||null,
+      notes:notes||duplicate.notes||"",
+      active:true,
+      updated_at:new Date().toISOString()
+    };
+
+    const {data:reactivated,error:reactivateError}=await sb.from("jk_customers")
+      .update(payload)
+      .eq("id",duplicate.id)
+      .select("*")
+      .single();
+
+    if(btn){btn.disabled=false;btn.textContent=old;}
+    customerUnlock("save");
+
+    if(reactivateError){
+      return adminToast("Erro ao reativar cliente: "+reactivateError.message,true);
+    }
+
+    customerCRMCustomers=customerCRMCustomers.map(c=>Number(c.id)===Number(duplicate.id)?reactivated:c);
+    customerCRMView=customerCRMCustomers.map(buildCustomerView);
+    updateCustomerKPIs();renderBirthdayCustomers();renderInactiveCustomers();renderCustomerTable();
+    resetCustomerForm();
+    adminToast("Cliente reativado e cadastro atualizado.");
+    return;
+  }
 
   const btn=e.currentTarget.querySelector('button[type="submit"]');
   const old=btn?.textContent||"Salvar cliente";
@@ -470,6 +520,35 @@ async function deactivateCustomer(id){
 
   adminToast("Cliente inativado. O histórico foi preservado.");
   await loadCustomerCRM();
+}
+
+
+async function reactivateCustomer(id){
+  const customer=customerCRMCustomers.find(c=>Number(c.id)===Number(id));
+  if(!customer)return adminToast("Cliente não encontrado.",true);
+  if(customer.active!==false)return adminToast("Este cliente já está ativo.");
+
+  const key=`reactivate:${id}`;
+  if(!customerLock(key))return;
+
+  try{
+    const {data,error}=await sb.from("jk_customers")
+      .update({active:true,updated_at:new Date().toISOString()})
+      .eq("id",id)
+      .select("*")
+      .single();
+
+    if(error)throw error;
+
+    customerCRMCustomers=customerCRMCustomers.map(c=>Number(c.id)===Number(id)?data:c);
+    customerCRMView=customerCRMCustomers.map(buildCustomerView);
+    updateCustomerKPIs();renderBirthdayCustomers();renderInactiveCustomers();renderCustomerTable();
+    adminToast(`${data.full_name} foi reativado.`);
+  }catch(error){
+    adminToast("Erro ao reativar cliente: "+error.message,true);
+  }finally{
+    customerUnlock(key);
+  }
 }
 
 // ===== SALVA TEMPO DE RETORNO E MENSAGENS =====
