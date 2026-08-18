@@ -1,0 +1,176 @@
+/*
+==========================================================
+JK BARBEARIA - ENCAIXES E FILA PRESENCIAL V17
+==========================================================
+FILA:
+- cliente aguarda sem bloquear a agenda pública;
+- ao clicar "Iniciar", vira um atendimento real no horário atual.
+
+ENCAIXE:
+- proprietário escolhe data/hora manualmente;
+- pode ultrapassar o fechamento;
+- o sistema ainda impede choque com outro atendimento do barbeiro.
+==========================================================
+*/
+let walkinCustomers=[],walkinServices=[],walkinBarbers=[],walkinQueue=[];
+const wq=s=>document.querySelector(s);
+
+document.addEventListener("DOMContentLoaded",()=>{
+  if(document.body?.dataset?.adminPage!=="appointments")return;
+  wq("#openWalkinFormBtn")?.addEventListener("click",()=>{wq("#walkinFormCard").hidden=false;wq("#walkinName")?.focus();});
+  wq("#closeWalkinFormBtn")?.addEventListener("click",()=>wq("#walkinFormCard").hidden=true);
+  wq("#walkinMode")?.addEventListener("change",syncWalkinMode);
+  wq("#walkinCustomer")?.addEventListener("change",fillWalkinCustomer);
+  wq("#walkinForm")?.addEventListener("submit",saveWalkin);
+  initializeWalkins();
+});
+
+async function initializeWalkins(){
+  const [c,s,b]=await Promise.all([
+    sb.from("jk_customers").select("id,full_name,phone,phone_digits").eq("active",true).order("full_name"),
+    sb.from("services").select("id,name,price,duration_minutes").eq("active",true).order("sort_order"),
+    sb.from("barbers").select("id,name").eq("active",true).order("sort_order")
+  ]);
+  if(c.error||s.error||b.error)return adminToast("Não foi possível carregar os dados de encaixe.",true);
+  walkinCustomers=c.data||[];walkinServices=s.data||[];walkinBarbers=b.data||[];
+  renderWalkinSelectors();
+  setWalkinNow();
+  syncWalkinMode();
+  await renderWalkinQueue();
+}
+
+function renderWalkinSelectors(){
+  const customer=wq("#walkinCustomer"),service=wq("#walkinService"),barber=wq("#walkinBarber");
+  if(customer)customer.innerHTML='<option value="">Novo / informar abaixo</option>'+walkinCustomers.map(c=>`<option value="${c.id}">${JK.esc(c.full_name)} · ${JK.esc(c.phone)}</option>`).join("");
+  if(service)service.innerHTML='<option value="">Selecione</option>'+walkinServices.map(x=>`<option value="${x.id}">${JK.esc(x.name)} · ${JK.money(x.price)}</option>`).join("");
+  if(barber)barber.innerHTML='<option value="">Selecione</option>'+walkinBarbers.map(x=>`<option value="${x.id}">${JK.esc(x.name)}</option>`).join("");
+}
+
+function fillWalkinCustomer(){
+  const id=Number(wq("#walkinCustomer")?.value||0),c=walkinCustomers.find(x=>Number(x.id)===id);
+  if(!c)return;
+  wq("#walkinName").value=c.full_name||"";
+  wq("#walkinPhone").value=c.phone||"";
+}
+
+function localParts(){
+  const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());
+  const get=t=>parts.find(x=>x.type===t)?.value;
+  return {date:`${get("year")}-${get("month")}-${get("day")}`,time:`${get("hour")}:${get("minute")}`};
+}
+function setWalkinNow(){const p=localParts();if(wq("#walkinDate"))wq("#walkinDate").value=p.date;if(wq("#walkinTime"))wq("#walkinTime").value=p.time;}
+
+function syncWalkinMode(){
+  const isQueue=wq("#walkinMode")?.value==="fila";
+  if(wq("#walkinManualTimeFields"))wq("#walkinManualTimeFields").hidden=isQueue;
+  if(!isQueue)setWalkinNow();
+}
+
+function phoneDigits(v){return String(v||"").replace(/\D/g,"");}
+async function ensureWalkinCustomer(name,phone,selectedId){
+  if(selectedId)return Number(selectedId);
+  const digits=phoneDigits(phone);
+  const existing=walkinCustomers.find(c=>c.phone_digits===digits);
+  if(existing)return existing.id;
+  const {data,error}=await sb.from("jk_customers").insert({full_name:name,phone,phone_digits:digits}).select("id").single();
+  if(error)throw error;
+  return data.id;
+}
+
+async function saveWalkin(e){
+  e.preventDefault();
+  const mode=wq("#walkinMode").value;
+  const name=String(wq("#walkinName").value||"").trim(),phone=String(wq("#walkinPhone").value||"").trim();
+  const serviceId=Number(wq("#walkinService").value),barberId=Number(wq("#walkinBarber").value);
+  const payment=wq("#walkinPayment").value,notes=String(wq("#walkinNotes").value||"").trim();
+  const selectedCustomer=Number(wq("#walkinCustomer").value||0);
+  if(name.length<2||phoneDigits(phone).length<8)return adminToast("Informe nome e WhatsApp do cliente.",true);
+  if(!serviceId||!barberId)return adminToast("Escolha o serviço e o barbeiro.",true);
+  const service=walkinServices.find(x=>Number(x.id)===serviceId),barber=walkinBarbers.find(x=>Number(x.id)===barberId);
+  if(!service||!barber)return adminToast("Serviço ou barbeiro inválido.",true);
+
+  const btn=e.currentTarget.querySelector("button[type=submit]");
+  if(btn){btn.disabled=true;btn.textContent="Salvando...";}
+  try{
+    const customerId=await ensureWalkinCustomer(name,phone,selectedCustomer);
+    if(mode==="fila"){
+      const {error}=await sb.from("walk_in_queue").insert({
+        jk_customer_id:customerId,client_name:name,phone,service_id:service.id,service_name:service.name,
+        price:service.price,duration_minutes:service.duration_minutes,barber_id:barber.id,barber_name:barber.name,
+        payment_method:payment,notes
+      });
+      if(error)throw error;
+      adminToast("Cliente adicionado à fila presencial.");
+    }else{
+      const date=wq("#walkinDate").value,time=wq("#walkinTime").value;
+      if(!date||!time)throw new Error("Informe data e horário do encaixe.");
+      const {error}=await sb.rpc("create_admin_walkin_booking",{
+        p_client_name:name,p_phone:phone,p_service_id:serviceId,p_barber_id:barberId,
+        p_booking_date:date,p_booking_time:time,p_payment_method:payment,p_notes:notes,
+        p_origin:"encaixe",p_customer_id:customerId
+      });
+      if(error)throw error;
+      adminToast("Encaixe criado. Ele já aparece nos agendamentos.");
+    }
+    e.currentTarget.reset();wq("#walkinCustomer").value="";setWalkinNow();syncWalkinMode();
+    wq("#walkinFormCard").hidden=true;
+    await renderWalkinQueue();
+    await renderBookings();
+  }catch(err){adminToast(err.message||"Erro ao adicionar atendimento.",true);}
+  finally{if(btn){btn.disabled=false;btn.textContent="Adicionar atendimento";}}
+}
+
+async function renderWalkinQueue(){
+  const root=wq("#walkinQueueList");if(!root)return;
+  const p=localParts();
+  const start=`${p.date}T00:00:00-03:00`,end=`${p.date}T23:59:59-03:00`;
+  const {data,error}=await sb.from("walk_in_queue").select("*").gte("arrived_at",start).lte("arrived_at",end).in("queue_status",["aguardando","atendendo"]).order("arrived_at");
+  if(error){root.innerHTML='<div class="empty">Erro ao carregar a fila.</div>';return;}
+  walkinQueue=data||[];
+  const waiting=walkinQueue.filter(x=>x.queue_status==="aguardando").length;
+  if(wq("#walkinQueueCount"))wq("#walkinQueueCount").textContent=`${waiting} aguardando`;
+  if(!walkinQueue.length){root.innerHTML='<div class="empty">Nenhum cliente aguardando ou em atendimento.</div>';return;}
+  let pos=0;
+  root.innerHTML=walkinQueue.map(q=>{
+    const waiting=q.queue_status==="aguardando";if(waiting)pos++;
+    return `<article class="walkin-queue-item ${q.queue_status}">
+      <div class="walkin-position">${waiting?pos:"✂"}</div>
+      <div class="walkin-person">
+        <span>${waiting?"Aguardando":"Em atendimento"}</span>
+        <h3>${JK.esc(q.client_name)}</h3>
+        <p>${JK.esc(q.service_name)} · ${JK.esc(q.barber_name||"—")} · ${JK.money(q.price)}</p>
+        <small>Chegou ${new Date(q.arrived_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</small>
+      </div>
+      <div class="walkin-actions">
+        ${waiting?`<button class="btn btn-primary" type="button" onclick="startWalkinQueue(${q.id})">Iniciar</button>`:`<button class="btn btn-primary" type="button" onclick="finishWalkinQueue(${q.id},${q.booking_id})">Concluir</button>`}
+        <button class="mini-btn danger-mini" type="button" onclick="cancelWalkinQueue(${q.id})">Cancelar</button>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+async function startWalkinQueue(id){
+  const {error}=await sb.rpc("start_walkin_queue",{p_queue_id:id});
+  if(error)return adminToast("Não foi possível iniciar: "+error.message,true);
+  adminToast("Atendimento iniciado e registrado nos agendamentos.");
+  await renderWalkinQueue();await renderBookings();
+}
+
+async function finishWalkinQueue(queueId,bookingId){
+  if(!bookingId)return adminToast("Atendimento não possui agendamento vinculado.",true);
+  await setStatus(bookingId,"concluido");
+  const {error}=await sb.from("walk_in_queue").update({queue_status:"concluido",finished_at:new Date().toISOString()}).eq("id",queueId);
+  if(error)return adminToast("Corte concluído, mas houve erro ao fechar a fila: "+error.message,true);
+  adminToast("Cliente concluído. Financeiro, cliente e caixa foram atualizados.");
+  await renderWalkinQueue();
+}
+
+async function cancelWalkinQueue(id){
+  if(!confirm("Remover este cliente da fila?"))return;
+  const row=walkinQueue.find(x=>Number(x.id)===Number(id));
+  if(row?.booking_id)await sb.from("bookings").update({status:"cancelado",completed_at:null}).eq("id",row.booking_id);
+  const {error}=await sb.from("walk_in_queue").update({queue_status:"cancelado",finished_at:new Date().toISOString()}).eq("id",id);
+  if(error)return adminToast("Erro ao cancelar: "+error.message,true);
+  adminToast("Cliente removido da fila.");
+  await renderWalkinQueue();await renderBookings();
+}
