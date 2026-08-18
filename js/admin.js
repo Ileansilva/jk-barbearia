@@ -113,7 +113,7 @@ async function renderCurrentPage(){
     await renderBarberProfileDay();
     return;
   }
-  const tasks={dashboard:renderKPIs,appointments:renderBookings,customers:renderCustomersAdmin,services:renderServicesAdmin,barbers:renderBarbersAdmin,finance:renderFinance,gallery:renderGalleryAdmin,settings:loadSettings};
+  const tasks={dashboard:renderKPIs,appointments:renderBookings,customers:window.renderCustomersAdmin,services:renderServicesAdmin,barbers:renderBarbersAdmin,finance:renderFinance,cash:window.renderCashAdmin,gallery:renderGalleryAdmin,settings:loadSettings};
   const task=tasks[page];
   if(task)await task();
 }
@@ -155,7 +155,7 @@ async function renderBookings(){
   if(!data?.length){root.innerHTML='<tr><td colspan="9"><div class="empty">Nenhum agendamento ainda.</div></td></tr>';return;}
 
   root.innerHTML=data.map(b=>`<tr>
-    <td><strong>${JK.esc(b.client_name)}</strong><br><span class="muted">${JK.esc(b.phone)}</span></td>
+    <td><strong>${JK.esc(b.client_name)}</strong><br><span class="muted">${JK.esc(b.phone)}</span><br><span class="booking-origin-badge ${b.booking_origin||"online"}">${b.booking_origin==="encaixe"?"Encaixe":b.booking_origin==="presencial"?"Presencial":"Online"}</span></td>
     <td><strong>${JK.esc(b.barber_name||"—")}</strong></td>
     <td>${JK.esc(b.service_name)}</td>
     <td>${new Date(b.booking_date+"T12:00:00").toLocaleDateString("pt-BR")}<br>${String(b.booking_time).slice(0,5)}</td>
