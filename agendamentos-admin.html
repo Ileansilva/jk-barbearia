@@ -1,10 +1,49 @@
 <!DOCTYPE html><html lang="pt-BR"><head>
-<!-- ===== CABEÇALHO / CONFIGURAÇÕES DA PÁGINA ===== --><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agendamentos | JK Barbearia</title><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/admin.css"><link rel="stylesheet" href="css/admin-v2.css"><link rel="stylesheet" href="css/admin-v3.css"><link rel="stylesheet" href="css/admin-v5.css"><link rel="stylesheet" href="css/admin-v6.css"><link rel="stylesheet" href="css/admin-v7.css"><link rel="stylesheet" href="css/admin-v8.css"><link rel="stylesheet" href="css/payment-v14.css"></head><body class="admin-body admin-multipage" data-admin-page="appointments">
+<!-- ===== CABEÇALHO / CONFIGURAÇÕES DA PÁGINA ===== --><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agendamentos | JK Barbearia</title><link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="css/style.css"><link rel="stylesheet" href="css/admin.css"><link rel="stylesheet" href="css/admin-v2.css"><link rel="stylesheet" href="css/admin-v3.css"><link rel="stylesheet" href="css/admin-v5.css"><link rel="stylesheet" href="css/admin-v6.css"><link rel="stylesheet" href="css/admin-v7.css"><link rel="stylesheet" href="css/admin-v8.css"><link rel="stylesheet" href="css/payment-v14.css"><link rel="stylesheet" href="css/walkins-v17.css"></head><body class="admin-body admin-multipage" data-admin-page="appointments">
 <!-- ===== INÍCIO DO CONTEÚDO VISÍVEL ===== --><div class="admin-ambient" aria-hidden="true"></div><!-- ===== LOGIN DO PROPRIETÁRIO ===== -->
 <div id="loginOverlay" class="login-overlay"><form id="loginForm" class="login-card"><img src="assets/jk-logo.png" alt="Logo JK Barbearia"><h1>Área do proprietário</h1><p>Acesse a administração da JK Barbearia.</p><div class="field"><label>E-mail</label><input name="email" type="email" required></div><div class="field" style="margin-top:12px"><label>Senha</label><input name="password" type="password" required></div><div id="loginError" style="color:#ff9c9c;margin-top:9px"></div><button class="btn btn-primary" type="submit">Entrar</button></form></div><!-- ===== ESTRUTURA PRINCIPAL DO PAINEL ADMIN ===== -->
 <div class="admin-wrap"><!-- ===== MENU LATERAL DO ADMINISTRADOR ===== -->
-<aside class="sidebar"><a class="admin-sidebar-logo" href="admin.html"><img src="assets/jk-logo.png" alt="JK Barbearia"></a><nav class="side-nav side-nav-links"><a class="side-link " href="admin.html"><span>⌂</span>Visão geral</a><a class="side-link active" href="agendamentos-admin.html"><span>▣</span>Agendamentos</a><a class="side-link " href="clientes-admin.html"><span>♧</span>Clientes</a><a class="side-link " href="servicos-admin.html"><span>✂</span>Serviços</a><a class="side-link " href="barbeiros-admin.html"><span>♙</span>Barbeiros</a><a class="side-link " href="financeiro-admin.html"><span>$</span>Financeiro</a><a class="side-link " href="galeria-admin.html"><span>▧</span>Galeria</a><a class="side-link " href="configuracoes-admin.html"><span>⚙</span>Configurações</a></nav><div class="sidebar-bottom"><a class="side-link" href="index.html"><span>↗</span>Ver site</a><button id="logout" class="side-link side-button"><span>⇥</span>Sair</button></div></aside><!-- ===== CONTEÚDO PRINCIPAL ===== -->
+<aside class="sidebar"><a class="admin-sidebar-logo" href="admin.html"><img src="assets/jk-logo.png" alt="JK Barbearia"></a><nav class="side-nav side-nav-links"><a class="side-link " href="admin.html"><span>⌂</span>Visão geral</a><a class="side-link active" href="agendamentos-admin.html"><span>▣</span>Agendamentos</a><a class="side-link " href="clientes-admin.html"><span>♧</span>Clientes</a><a class="side-link " href="servicos-admin.html"><span>✂</span>Serviços</a><a class="side-link " href="barbeiros-admin.html"><span>♙</span>Barbeiros</a><a class="side-link " href="financeiro-admin.html"><span>$</span>Financeiro</a><a class="side-link " href="caixa-admin.html"><span>▤</span>Caixa</a><a class="side-link " href="galeria-admin.html"><span>▧</span>Galeria</a><a class="side-link " href="configuracoes-admin.html"><span>⚙</span>Configurações</a></nav><div class="sidebar-bottom"><a class="side-link" href="index.html"><span>↗</span>Ver site</a><button id="logout" class="side-link side-button"><span>⇥</span>Sair</button></div></aside><!-- ===== CONTEÚDO PRINCIPAL ===== -->
 <!-- ===== CONTEÚDO DA PÁGINA ADMINISTRATIVA ===== -->
-<main class="admin-main"><div class="admin-top"><div class="admin-page-heading"><span class="eyebrow">Painel administrativo</span><h1>Agendamentos</h1></div><div class="admin-top-actions"><a class="btn btn-outline" href="index.html">Ver site</a></div></div><!-- ===== GERENCIAMENTO DE AGENDAMENTOS ===== -->
+<main class="admin-main"><div class="admin-top"><div class="admin-page-heading"><span class="eyebrow">Painel administrativo</span><h1>Agendamentos</h1></div><div class="admin-top-actions"><button id="openWalkinFormBtn" class="btn btn-primary" type="button">+ Encaixe / Presencial</button><a class="btn btn-outline" href="index.html">Ver site</a></div></div><!-- ===== GERENCIAMENTO DE AGENDAMENTOS ===== -->
+
+<!-- ===== ENCAIXE / CLIENTE PRESENCIAL / FILA ===== -->
+<section id="walkinManager" class="walkin-manager">
+  <article id="walkinFormCard" class="card walkin-form-card" hidden>
+    <div class="card-head walkin-form-head">
+      <div><span class="eyebrow">Atendimento extra</span><h2>Novo encaixe / cliente presencial</h2><p class="muted">Pode ser usado mesmo depois do horário de fechamento.</p></div>
+      <button id="closeWalkinFormBtn" class="mini-btn" type="button">Fechar</button>
+    </div>
+    <form id="walkinForm" class="form-grid">
+      <div class="field">
+        <label>Tipo de atendimento</label>
+        <select id="walkinMode">
+          <option value="fila">Presencial — adicionar à fila</option>
+          <option value="encaixe">Encaixe — informar horário manual</option>
+        </select>
+      </div>
+      <div class="field"><label>Cliente cadastrado (opcional)</label><select id="walkinCustomer"><option value="">Novo / informar abaixo</option></select></div>
+      <div class="field"><label>Nome completo</label><input id="walkinName" maxlength="120" required></div>
+      <div class="field"><label>WhatsApp</label><input id="walkinPhone" maxlength="25" required></div>
+      <div class="field"><label>Serviço</label><select id="walkinService" required></select></div>
+      <div class="field"><label>Barbeiro</label><select id="walkinBarber" required></select></div>
+      <div class="field"><label>Forma de pagamento</label><select id="walkinPayment"><option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option></select></div>
+      <div id="walkinManualTimeFields" class="field">
+        <label>Data e horário do encaixe</label>
+        <div class="walkin-datetime"><input id="walkinDate" type="date"><input id="walkinTime" type="time" step="300"></div>
+      </div>
+      <div class="field full"><label>Observação</label><input id="walkinNotes" maxlength="250" placeholder="Opcional"></div>
+      <div class="field full walkin-form-actions"><button class="btn btn-primary" type="submit">Adicionar atendimento</button></div>
+    </form>
+  </article>
+
+  <article class="card walkin-queue-card">
+    <div class="card-head">
+      <div><span class="eyebrow">Hoje</span><h2>Fila de clientes presenciais</h2><p class="muted">Clientes aguardando não ocupam horários da agenda pública. Só viram atendimento ao clicar em Iniciar.</p></div>
+      <span id="walkinQueueCount" class="walkin-count">0 aguardando</span>
+    </div>
+    <div id="walkinQueueList" class="walkin-queue-list"><div class="empty">Carregando fila...</div></div>
+  </article>
+</section>
 <section id="appointments" class="panel active"><div class="card"><div class="card-head"><h2>Agendamentos</h2></div><div class="table-wrap"><table class="table"><thead><tr><th>Cliente</th><th>Barbeiro</th><th>Serviço</th><th>Data</th><th>Valor</th><th>Pagamento</th><th>Status</th><th>Obs.</th><th>Ações</th></tr></thead><tbody id="bookingRows"></tbody></table></div></div></section></main></div><!-- ===== SCRIPTS / FUNCIONALIDADES ===== -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/admin.js"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/walkins.js"></script><script src="js/admin.js"></script></body></html>
