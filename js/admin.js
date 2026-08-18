@@ -21,6 +21,10 @@ e dados da empresa pelo painel de Configurações.
 */
 
 let session=null, services=[], barbers=[], galleryItems=[], financeBookings=[], currentProfileBarberId=null;
+let bookingRealtimeChannel=null;
+let bookingAlarmTimer=null;
+let bookingAudioContext=null;
+let bookingRealtimeStarted=false;
 let serviceCropState={img:null,file:null,zoom:100,x:0,y:0};
 const $=(s)=>document.querySelector(s);
 const adminActionLocks=new Set();
@@ -84,7 +88,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
   const {data,error}=await sb.auth.getSession();
   if(error)console.error(error);
   session=data?.session||null;
-  if(session){showAdmin();await renderCurrentPage();}
+  if(session){showAdmin();armBookingAlarm();startBookingRealtime();await renderCurrentPage();}
 });
 
 // ===== LOGIN DO PROPRIETÁRIO =====
@@ -99,12 +103,103 @@ async function login(e){
   session=data.session;
   $("#loginError").textContent="";
   showAdmin();
+  armBookingAlarm();
+  startBookingRealtime();
   await renderCurrentPage();
+}
+
+
+// ===== AGENDAMENTO EM TEMPO REAL / ALARME V23 =====
+function armBookingAlarm(){
+  const unlock=()=>{
+    try{
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!bookingAudioContext&&AC)bookingAudioContext=new AC();
+      bookingAudioContext?.resume?.();
+    }catch(e){}
+  };
+  ["click","keydown","touchstart"].forEach(evt=>document.addEventListener(evt,unlock,{once:true,capture:true}));
+}
+
+function ensureBookingAlert(){
+  let box=document.querySelector("#newBookingRealtimeAlert");
+  if(box)return box;
+  box=document.createElement("div");
+  box.id="newBookingRealtimeAlert";
+  box.className="new-booking-realtime-alert";
+  box.hidden=true;
+  box.innerHTML=`
+    <div class="new-booking-alert-icon">🔔</div>
+    <div class="new-booking-alert-content">
+      <span>Novo agendamento</span>
+      <strong id="newBookingAlertTitle">Novo cliente agendou</strong>
+      <p id="newBookingAlertDetails"></p>
+    </div>
+    <div class="new-booking-alert-actions">
+      <button id="newBookingViewBtn" class="btn btn-primary" type="button">Ver agendamento</button>
+      <button id="newBookingDismissBtn" class="btn btn-outline" type="button">OK, entendi</button>
+    </div>`;
+  document.body.appendChild(box);
+  box.querySelector("#newBookingDismissBtn").addEventListener("click",dismissBookingAlert);
+  box.querySelector("#newBookingViewBtn").addEventListener("click",()=>{
+    dismissBookingAlert();
+    if(document.body.dataset.adminPage==="appointments"){
+      renderBookings();window.scrollTo({top:0,behavior:"smooth"});
+    }else location.href="agendamentos-admin.html";
+  });
+  return box;
+}
+
+function playBookingAlarmTone(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!bookingAudioContext&&AC)bookingAudioContext=new AC();
+    if(!bookingAudioContext)return;
+    if(bookingAudioContext.state==="suspended")bookingAudioContext.resume();
+    const now=bookingAudioContext.currentTime;
+    [0,.22,.44].forEach((offset,i)=>{
+      const osc=bookingAudioContext.createOscillator();
+      const gain=bookingAudioContext.createGain();
+      osc.frequency.setValueAtTime(i===1?880:740,now+offset);
+      gain.gain.setValueAtTime(.0001,now+offset);
+      gain.gain.exponentialRampToValueAtTime(.18,now+offset+.02);
+      gain.gain.exponentialRampToValueAtTime(.0001,now+offset+.16);
+      osc.connect(gain);gain.connect(bookingAudioContext.destination);
+      osc.start(now+offset);osc.stop(now+offset+.18);
+    });
+  }catch(e){}
+}
+function startBookingAlarm(){stopBookingAlarm();playBookingAlarmTone();bookingAlarmTimer=setInterval(playBookingAlarmTone,3500);}
+function stopBookingAlarm(){if(bookingAlarmTimer){clearInterval(bookingAlarmTimer);bookingAlarmTimer=null;}}
+function dismissBookingAlert(){stopBookingAlarm();const b=document.querySelector("#newBookingRealtimeAlert");if(b)b.hidden=true;}
+
+function realtimeBookingDetails(b){
+  const d=b.booking_date?new Date(b.booking_date+"T12:00:00").toLocaleDateString("pt-BR"):"—";
+  return `${b.service_name||"Serviço"} · ${b.barber_name||"Barbeiro"} · ${d} às ${String(b.booking_time||"").slice(0,5)}`;
+}
+async function onRealtimeBooking(payload){
+  const b=payload?.new;if(!b)return;
+  if(b.booking_origin&&b.booking_origin!=="online")return;
+  const box=ensureBookingAlert();
+  box.querySelector("#newBookingAlertTitle").textContent=`${b.client_name||"Novo cliente"} acabou de agendar`;
+  box.querySelector("#newBookingAlertDetails").textContent=realtimeBookingDetails(b);
+  box.hidden=false;startBookingAlarm();
+  const page=document.body.dataset.adminPage||"dashboard";
+  if(page==="appointments")await renderBookings();
+  else if(page==="dashboard")await renderKPIs();
+  else if(page==="customers"&&window.renderCustomersAdmin)await window.renderCustomersAdmin();
+}
+function startBookingRealtime(){
+  if(bookingRealtimeStarted||!window.sb)return;
+  bookingRealtimeStarted=true;
+  bookingRealtimeChannel=sb.channel("jk-bookings-admin-realtime")
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"bookings"},onRealtimeBooking)
+    .subscribe();
 }
 
 function showAdmin(){$("#loginOverlay")?.classList.add("hidden");}
 // ===== SAIR DO PAINEL =====
-async function logout(){await sb.auth.signOut();location.reload();}
+async function logout(){stopBookingAlarm();if(bookingRealtimeChannel){try{await sb.removeChannel(bookingRealtimeChannel);}catch(e){}}await sb.auth.signOut();location.reload();}
 
 function switchPanel(id,btn){
   document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
