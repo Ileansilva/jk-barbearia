@@ -487,3 +487,6 @@ async function saveCustomerRules(){
   renderInactiveCustomers();
   renderCustomerTable();
 }
+
+// Disponibiliza o módulo para o roteador do painel.
+window.renderCustomersAdmin=renderCustomersAdmin;
