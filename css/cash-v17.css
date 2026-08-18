@@ -56,3 +56,6 @@ JK BARBEARIA - CAIXA V17
 .cash-auth-warning{display:block;margin-top:13px;padding-top:12px;border-top:1px solid rgba(255,255,255,.055);color:#8b7474;font-size:.62rem}
 .cash-modal-open{overflow:hidden}
 @media(max-width:560px){.cash-delete-summary{grid-template-columns:repeat(2,1fr)}.cash-auth-actions{grid-template-columns:1fr}}
+
+
+.cash-close-preview .waiting strong{color:#d7c58d;font-size:.72rem}
