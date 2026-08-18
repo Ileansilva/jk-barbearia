@@ -47,3 +47,22 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   .new-booking-realtime-alert{grid-template-columns:44px minmax(0,1fr);top:10px;right:10px;width:calc(100vw - 20px)}
   .new-booking-alert-actions{grid-column:1/-1}.new-booking-alert-actions .btn{flex:1}
 }
+
+
+/* ===== ACESSO DO PROPRIETÁRIO V24 ===== */
+.owner-nav-link{
+  color:#d8bd77!important;
+  font-weight:800!important;
+}
+.owner-nav-link:hover{
+  color:#fff0bd!important;
+}
+.owner-footer-link{
+  color:#8f969d;
+  font-size:.72rem;
+  text-decoration:none;
+  transition:.2s ease;
+}
+.owner-footer-link:hover{
+  color:#d8bd77;
+}
