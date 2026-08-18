@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Caixa | JK Barbearia</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/admin-v2.css">
+<link rel="stylesheet" href="css/admin-v3.css">
+<link rel="stylesheet" href="css/admin-v5.css">
+<link rel="stylesheet" href="css/admin-v6.css">
+<link rel="stylesheet" href="css/admin-v7.css">
+<link rel="stylesheet" href="css/admin-v8.css">
+<link rel="stylesheet" href="css/cash-v17.css">
+</head>
+<body class="admin-body admin-multipage" data-admin-page="cash">
+<div id="loginOverlay" class="login-overlay">
+  <form id="loginForm" class="login-card">
+    <img src="assets/jk-logo.png" alt="Logo JK Barbearia">
+    <h1>Área do proprietário</h1><p>Acesse a administração da JK Barbearia.</p>
+    <div class="field"><label>E-mail</label><input name="email" type="email" required></div>
+    <div class="field" style="margin-top:12px"><label>Senha</label><input name="password" type="password" required></div>
+    <div id="loginError" style="color:#ff9c9c;margin-top:9px"></div>
+    <button class="btn btn-primary" type="submit">Entrar</button>
+  </form>
+</div>
+
+<div class="admin-wrap">
+  <aside class="sidebar">
+    <a class="admin-sidebar-logo" href="admin.html"><img src="assets/jk-logo.png" alt="JK Barbearia"></a>
+    <nav class="side-nav side-nav-links">
+      <a class="side-link" href="admin.html"><span>⌂</span>Visão geral</a>
+      <a class="side-link" href="agendamentos-admin.html"><span>▣</span>Agendamentos</a>
+      <a class="side-link" href="clientes-admin.html"><span>♧</span>Clientes</a>
+      <a class="side-link" href="servicos-admin.html"><span>✂</span>Serviços</a>
+      <a class="side-link" href="barbeiros-admin.html"><span>♙</span>Barbeiros</a>
+      <a class="side-link" href="financeiro-admin.html"><span>$</span>Financeiro</a>
+      <a class="side-link active" href="caixa-admin.html"><span>▤</span>Caixa</a>
+      <a class="side-link" href="galeria-admin.html"><span>▧</span>Galeria</a>
+      <a class="side-link" href="configuracoes-admin.html"><span>⚙</span>Configurações</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a class="side-link" href="index.html"><span>↗</span>Ver site</a>
+      <button id="logout" class="side-link side-button"><span>⇥</span>Sair</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-top">
+      <div class="admin-page-heading">
+        <span class="eyebrow">Controle operacional</span>
+        <h1>Caixa</h1>
+        <p class="muted">Abertura, movimentações, vendas e fechamento do expediente.</p>
+      </div>
+      <div class="admin-top-actions"><a class="btn btn-outline" href="financeiro-admin.html">Ver financeiro</a></div>
+    </div>
+
+    <section id="cashClosedState" class="cash-open-panel card">
+      <div class="cash-open-copy">
+        <span class="eyebrow">Início do expediente</span>
+        <h2>Caixa fechado</h2>
+        <p>Informe o valor físico disponível para troco antes de começar.</p>
+      </div>
+      <form id="openCashForm" class="cash-open-form">
+        <div class="field"><label>Valor inicial / troco</label><input id="cashOpeningAmount" type="number" min="0" step="0.01" value="0" required></div>
+        <button class="btn btn-primary" type="submit">Abrir caixa</button>
+      </form>
+    </section>
+
+    <section id="cashOpenState" hidden>
+      <div class="cash-status-line">
+        <div><span class="cash-live-dot"></span><strong>Caixa aberto</strong> <span id="cashOpenedAt" class="muted"></span></div>
+        <button id="refreshCashBtn" class="btn btn-outline" type="button">Atualizar</button>
+      </div>
+
+      <div class="cash-kpis">
+        <article><span>Valor inicial</span><strong id="cashOpeningKpi">R$ 0,00</strong><small>Troco da abertura</small></article>
+        <article><span>Vendas</span><strong id="cashGrossKpi">R$ 0,00</strong><small id="cashCutsKpi">0 cortes</small></article>
+        <article class="cash-money"><span>Dinheiro esperado</span><strong id="cashExpectedKpi">R$ 0,00</strong><small>Valor físico estimado</small></article>
+        <article><span>Movimentações</span><strong id="cashMovementKpi">R$ 0,00</strong><small>Entradas menos saídas</small></article>
+      </div>
+
+      <div class="cash-payment-grid">
+        <article class="cash-payment-card pix"><span>Pix</span><strong id="cashPixTotal">R$ 0,00</strong><small id="cashPixCuts">0 cortes</small></article>
+        <article class="cash-payment-card card"><span>Cartão</span><strong id="cashCardTotal">R$ 0,00</strong><small id="cashCardCuts">0 cortes</small></article>
+        <article class="cash-payment-card money"><span>Dinheiro</span><strong id="cashMoneyTotal">R$ 0,00</strong><small id="cashMoneyCuts">0 cortes</small></article>
+      </div>
+
+      <div class="cash-main-grid">
+        <article class="card">
+          <div class="card-head"><div><span class="eyebrow">Movimentação manual</span><h2>Entrada / saída</h2></div></div>
+          <form id="cashMovementForm" class="form-grid">
+            <div class="field">
+              <label>Tipo</label>
+              <select id="cashMovementType">
+                <option value="entrada">Entrada</option>
+                <option value="suprimento">Suprimento / reforço de troco</option>
+                <option value="saida">Saída / despesa</option>
+                <option value="sangria">Sangria / retirada</option>
+              </select>
+            </div>
+            <div class="field"><label>Valor</label><input id="cashMovementAmount" type="number" min="0.01" step="0.01" required></div>
+            <div class="field full"><label>Descrição</label><input id="cashMovementDescription" maxlength="180" placeholder="Ex.: compra de material, retirada, troco..." required></div>
+            <div class="field full"><button class="btn btn-primary" type="submit">Registrar movimentação</button></div>
+          </form>
+        </article>
+
+        <article class="card cash-close-card">
+          <div class="card-head"><div><span class="eyebrow">Fim do expediente</span><h2>Fechar caixa</h2><p class="muted">Conte apenas o dinheiro físico que ficou no caixa.</p></div></div>
+          <form id="closeCashForm" class="form-grid">
+            <div class="field full"><label>Dinheiro contado</label><input id="cashCountedAmount" type="number" min="0" step="0.01" required></div>
+            <div class="field full"><label>Observação do fechamento</label><textarea id="cashCloseNotes" rows="3" maxlength="500" placeholder="Opcional. Se houver diferença, explique aqui."></textarea></div>
+            <div id="cashClosePreview" class="cash-close-preview"></div>
+            <div class="field full"><button class="btn btn-danger" type="submit">Fechar caixa</button></div>
+          </form>
+        </article>
+      </div>
+
+      <article class="card">
+        <div class="card-head"><div><span class="eyebrow">Movimentações do caixa</span><h2>Histórico do expediente</h2></div></div>
+        <div id="cashMovementList" class="cash-movement-list"></div>
+      </article>
+    </section>
+
+    <article class="card cash-history-card">
+      <div class="card-head"><div><span class="eyebrow">Conferência</span><h2>Histórico de caixas</h2><p class="muted">Últimos fechamentos com vendas e diferenças.</p></div></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Data</th><th>Abertura</th><th>Fechamento</th><th>Vendas</th><th>Pix</th><th>Cartão</th><th>Dinheiro</th><th>Diferença</th><th>Ações</th></tr></thead>
+          <tbody id="cashHistoryRows"></tbody>
+        </table>
+      </div>
+    </article>
+
+    <article id="cashHistoryDetail" class="card cash-history-detail" hidden></article>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/cash.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
