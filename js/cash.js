@@ -14,6 +14,15 @@ JK BARBEARIA - ABERTURA E FECHAMENTO DE CAIXA V17
 let currentCashRegister=null,currentCashBookings=[],currentCashMovements=[];
 let pendingCashDeleteId=null,pendingCashDeleteRow=null;
 const cashActionLocks=new Set();
+let cashPendingMovementCount=0;
+
+function cashOperationKey(){
+  if(window.crypto?.randomUUID)return window.crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{
+    const r=Math.random()*16|0,v=c==="x"?r:(r&0x3|0x8);
+    return v.toString(16);
+  });
+}
 
 function cashLock(key){
   if(cashActionLocks.has(key))return false;
@@ -154,9 +163,9 @@ function renderCashMovements(){
   }
   const labels={entrada:"Entrada",saida:"Saída",sangria:"Sangria",suprimento:"Suprimento"};
   root.innerHTML=currentCashMovements.map(m=>`
-    <div class="cash-movement-row ${m.movement_type}">
+    <div class="cash-movement-row ${m.movement_type} ${m._optimistic?"is-syncing":""}">
       <span class="cash-movement-sign">${["entrada","suprimento"].includes(m.movement_type)?"+":"−"}</span>
-      <span><strong>${labels[m.movement_type]||m.movement_type}</strong><small>${JK.esc(m.description)}</small></span>
+      <span><strong>${labels[m.movement_type]||m.movement_type}</strong><small>${JK.esc(m.description)}${m._optimistic?" · sincronizando...":""}</small></span>
       <span><strong>${cashMoney(m.amount)}</strong><small>${new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</small></span>
     </div>`).join("");
 }
@@ -174,22 +183,72 @@ async function addCashMovement(e){
   if(amount<=0){cashUnlock("movement");return adminToast("Informe um valor maior que zero.",true);}
   if(description.length<2){cashUnlock("movement");return adminToast("Informe a descrição.",true);}
 
-  cashSetBusy(btn,true,"Registrando...");
-  try{
-    const {data,error}=await sb.from("cash_movements").insert({
-      cash_register_id:currentCashRegister.id,movement_type:type,amount,description
-    }).select("*").single();
-    if(error)throw error;
+  const operationKey=cashOperationKey();
+  const optimisticId=`temp-${operationKey}`;
+  const optimisticRow={
+    id:optimisticId,
+    cash_register_id:currentCashRegister.id,
+    movement_type:type,
+    amount,
+    description,
+    operation_key:operationKey,
+    created_at:new Date().toISOString(),
+    _optimistic:true
+  };
 
-    // Atualização instantânea sem recarregar todas as consultas.
-    currentCashMovements=[data,...currentCashMovements.filter(x=>Number(x.id)!==Number(data.id))];
+  // Resposta visual instantânea.
+  cashPendingMovementCount++;
+  currentCashMovements=[optimisticRow,...currentCashMovements];
+  renderOpenCashNumbers();
+  renderCashMovements();
+  e.currentTarget.reset();
+  cashSetBusy(btn,true,"Salvando...");
+
+  try{
+    const payload={
+      cash_register_id:currentCashRegister.id,
+      movement_type:type,
+      amount,
+      description,
+      operation_key:operationKey
+    };
+
+    let {data,error}=await sb.from("cash_movements").insert(payload).select("*").single();
+
+    // Em conexão instável, o banco pode ter confirmado a gravação
+    // mesmo que o navegador tenha perdido a resposta.
+    if(error||!data){
+      const verify=await sb.from("cash_movements")
+        .select("*")
+        .eq("operation_key",operationKey)
+        .maybeSingle();
+
+      if(verify.data){
+        data=verify.data;
+        error=null;
+      }
+    }
+
+    if(error||!data)throw error||new Error("Não foi possível confirmar a movimentação.");
+
+    currentCashMovements=currentCashMovements.map(row=>
+      row.id===optimisticId?data:row
+    );
     renderOpenCashNumbers();
     renderCashMovements();
-    e.currentTarget.reset();
     adminToast("Movimentação registrada.");
   }catch(error){
-    adminToast("Erro ao registrar movimentação: "+(error?.message||error),true);
-  }finally{cashSetBusy(btn,false);cashUnlock("movement");}
+    // Só remove o lançamento visual se realmente não conseguimos confirmar.
+    currentCashMovements=currentCashMovements.filter(row=>row.id!==optimisticId);
+    renderOpenCashNumbers();
+    renderCashMovements();
+    adminToast("Não foi possível confirmar a movimentação. Tente novamente.",true);
+    console.error("JK Caixa addCashMovement:",error);
+  }finally{
+    cashPendingMovementCount=Math.max(0,cashPendingMovementCount-1);
+    cashSetBusy(btn,false);
+    cashUnlock("movement");
+  }
 }
 
 function updateCashClosePreview(){
@@ -222,6 +281,7 @@ function updateCashClosePreview(){
 async function closeCashRegister(e){
   e.preventDefault();
   if(!currentCashRegister)return adminToast("Nenhum caixa aberto.",true);
+  if(cashPendingMovementCount>0)return adminToast("Aguarde a movimentação terminar de sincronizar antes de fechar o caixa.",true);
   if(!cashLock("close"))return;
   const counted=Number(cashQ("#cashCountedAmount").value);
   const notes=String(cashQ("#cashCloseNotes").value||"").trim();
