@@ -72,11 +72,56 @@ function syncWalkinMode(){
 
 function phoneDigits(v){return String(v||"").replace(/\D/g,"");}
 async function ensureWalkinCustomer(name,phone,selectedId){
-  if(selectedId)return Number(selectedId);
   const digits=phoneDigits(phone);
-  const existing=walkinCustomers.find(c=>c.phone_digits===digits);
-  if(existing)return existing.id;
-  const {data,error}=await sb.from("jk_customers").insert({full_name:name,phone,phone_digits:digits}).select("id").single();
+
+  // Cliente selecionado manualmente
+  if(selectedId){
+    const id=Number(selectedId);
+    const {data,error}=await sb.from("jk_customers")
+      .update({
+        full_name:name,
+        phone,
+        phone_digits:digits,
+        active:true,
+        updated_at:new Date().toISOString()
+      })
+      .eq("id",id)
+      .select("id")
+      .single();
+
+    if(error)throw error;
+    return data.id;
+  }
+
+  // Procura no banco inteiro, inclusive clientes inativos.
+  const existingRes=await sb.from("jk_customers")
+    .select("id,active")
+    .eq("phone_digits",digits)
+    .maybeSingle();
+
+  if(existingRes.error)throw existingRes.error;
+
+  if(existingRes.data){
+    const {data,error}=await sb.from("jk_customers")
+      .update({
+        full_name:name,
+        phone,
+        active:true,
+        updated_at:new Date().toISOString()
+      })
+      .eq("id",existingRes.data.id)
+      .select("id")
+      .single();
+
+    if(error)throw error;
+    return data.id;
+  }
+
+  const {data,error}=await sb.from("jk_customers")
+    .insert({full_name:name,phone,phone_digits:digits,active:true})
+    .select("id")
+    .single();
+
   if(error)throw error;
   return data.id;
 }
@@ -108,19 +153,24 @@ async function saveWalkin(e){
     }else{
       const date=wq("#walkinDate").value,time=wq("#walkinTime").value;
       if(!date||!time)throw new Error("Informe data e horário do encaixe.");
-      const {error}=await sb.rpc("create_admin_walkin_booking",{
+      const {data:bookingId,error}=await sb.rpc("create_admin_walkin_booking",{
         p_client_name:name,p_phone:phone,p_service_id:serviceId,p_barber_id:barberId,
         p_booking_date:date,p_booking_time:time,p_payment_method:payment,p_notes:notes,
         p_origin:"encaixe",p_customer_id:customerId
       });
       if(error)throw error;
-      adminToast("Encaixe criado. Ele já aparece nos agendamentos.");
+      if(!bookingId)throw new Error("O encaixe não retornou confirmação do banco.");
+      adminToast("Encaixe presencial criado e confirmado.");
     }
     e.currentTarget.reset();wq("#walkinCustomer").value="";setWalkinNow();syncWalkinMode();
     wq("#walkinFormCard").hidden=true;
     await renderWalkinQueue();
     await renderBookings();
-  }catch(err){adminToast(err.message||"Erro ao adicionar atendimento.",true);}
+  }catch(err){
+    console.error("JK Walkin save:",err);
+    const msg=String(err?.message||"Erro ao adicionar atendimento.");
+    adminToast(msg,true);
+  }
   finally{if(btn){btn.disabled=false;btn.textContent="Adicionar atendimento";}}
 }
 
@@ -165,16 +215,71 @@ async function startWalkinQueue(id,btn=null){
 }
 
 async function finishWalkinQueue(queueId,bookingId,btn=null){
-  const key=`finish:${queueId}`;if(!walkinLock(key))return;walkinBusy(btn,true,"Concluindo...");
-  if(!bookingId){walkinBusy(btn,false);walkinUnlock(key);return adminToast("Atendimento não possui agendamento vinculado.",true);}
+  const key=`finish:${queueId}`;
+  if(!walkinLock(key))return;
+
+  walkinBusy(btn,true,"Concluindo...");
+
+  if(!bookingId){
+    walkinBusy(btn,false);
+    walkinUnlock(key);
+    return adminToast("Atendimento não possui agendamento vinculado.",true);
+  }
+
   try{
-    await setStatus(bookingId,"concluido");
-    const {error}=await sb.from("walk_in_queue").update({queue_status:"concluido",finished_at:new Date().toISOString()}).eq("id",queueId);
-    if(error)throw error;
+    const bookingRes=await sb.from("bookings")
+      .select("id,price,barber_id,barber_commission_percent,barber_commission_amount")
+      .eq("id",bookingId)
+      .single();
+
+    if(bookingRes.error)throw bookingRes.error;
+
+    const booking=bookingRes.data;
+    const payload={
+      status:"concluido",
+      completed_at:new Date().toISOString()
+    };
+
+    if(booking.barber_id&&(booking.barber_commission_percent===null||booking.barber_commission_amount===null)){
+      let barber=walkinBarbers.find(b=>Number(b.id)===Number(booking.barber_id));
+      if(!barber?.commission_percent){
+        const brRes=await sb.from("barbers")
+          .select("id,commission_percent")
+          .eq("id",booking.barber_id)
+          .single();
+        if(brRes.error)throw brRes.error;
+        barber=brRes.data;
+      }
+
+      const pct=Number(barber?.commission_percent||0);
+      payload.barber_commission_percent=pct;
+      payload.barber_commission_amount=Number((Number(booking.price||0)*pct/100).toFixed(2));
+    }
+
+    const updateBooking=await sb.from("bookings")
+      .update(payload)
+      .eq("id",bookingId);
+
+    if(updateBooking.error)throw updateBooking.error;
+
+    const queueUpdate=await sb.from("walk_in_queue")
+      .update({
+        queue_status:"concluido",
+        finished_at:new Date().toISOString()
+      })
+      .eq("id",queueId);
+
+    if(queueUpdate.error)throw queueUpdate.error;
+
     adminToast("Cliente concluído. Financeiro, cliente e caixa foram atualizados.");
-    await renderWalkinQueue();
-  }catch(error){adminToast("Erro ao concluir cliente: "+error.message,true);}
-  finally{walkinBusy(btn,false);walkinUnlock(key);}
+    await Promise.all([renderWalkinQueue(),renderBookings()]);
+  }catch(error){
+    console.error("JK Walkin finish:",error);
+    adminToast("Erro ao concluir cliente: "+(error?.message||error),true);
+  }finally{
+    walkinBusy(btn,false);
+    walkinUnlock(key);
+  }
 }
 
 async function cancelWalkinQueue(id,btn=null){
