@@ -298,3 +298,13 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
     transition-duration:.01ms!important;
   }
 }
+
+
+/* ===== AGENDAMENTO FORA DO HORÁRIO V26 ===== */
+.booking-closed-box span{
+  max-width:100%;
+}
+.booking-closed-box strong,
+.booking-closed-box span{
+  display:block;
+}
