@@ -934,25 +934,44 @@ function renderMonthWeeks(base,monthValue){
     card.style.display="none";
     return;
   }
+
   card.style.display="";
-  const first=`${monthValue}-01`,last=monthLastDate(monthValue);
-  const label=new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric"}).format(new Date(first+"T12:00:00"));
+  const first=`${monthValue}-01`;
+  const last=monthLastDate(monthValue);
+  const lastDay=Number(last.slice(8,10));
+  const label=new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric"})
+    .format(new Date(first+"T12:00:00"));
+
   $("#financeWeeksTitle").textContent=`Semanas de ${label[0].toUpperCase()+label.slice(1)}`;
 
-  let cursor=mondayOfDateISO(first);
-  const weeks=[];
-  let index=1;
-  while(cursor<=last){
-    const end=addDaysISO(cursor,6);
-    const from=cursor<first?first:cursor;
-    const to=end>last?last:end;
+  // V27: semanas financeiras fixas do mês.
+  // Semana 1 = 01–07, Semana 2 = 08–14, Semana 3 = 15–21,
+  // Semana 4 = 22–28 e Semana 5 = 29 até o último dia do mês.
+  const ranges=[
+    [1,7],
+    [8,14],
+    [15,21],
+    [22,28],
+    [29,lastDay]
+  ].filter(([from])=>from<=lastDay);
+
+  const weeks=ranges.map(([fromDay,toDay],i)=>{
+    const safeTo=Math.min(toDay,lastDay);
+    const from=`${monthValue}-${String(fromDay).padStart(2,"0")}`;
+    const to=`${monthValue}-${String(safeTo).padStart(2,"0")}`;
     const list=dateRangeFilter(base,from,to);
-    weeks.push({index,from,to,stats:financeStats(list)});
-    cursor=addDaysISO(cursor,7);
-    index++;
-  }
+    return {index:i+1,from,to,stats:financeStats(list)};
+  });
+
   root.innerHTML=weeks.map(w=>`<article class="finance-week-card">
-    <div class="finance-week-title"><strong class="week-number">Semana ${w.index}</strong><span class="week-range">${new Date(w.from+"T12:00:00").toLocaleDateString("pt-BR")} <b>até</b> ${new Date(w.to+"T12:00:00").toLocaleDateString("pt-BR")}</span></div>
+    <div class="finance-week-title">
+      <strong class="week-number">Semana ${w.index}</strong>
+      <span class="week-range">
+        ${new Date(w.from+"T12:00:00").toLocaleDateString("pt-BR")}
+        <b>até</b>
+        ${new Date(w.to+"T12:00:00").toLocaleDateString("pt-BR")}
+      </span>
+    </div>
     <div class="finance-week-stats">
       <div><small>Cortes</small><b>${w.stats.cuts}</b></div>
       <div><small>Faturado</small><b>${JK.money(w.stats.gross)}</b></div>
