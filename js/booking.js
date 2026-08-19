@@ -312,11 +312,14 @@ function applyAutomaticBookingStatus(){
     }
   }
 
-  setBookingFormEnabled(state.available);
+  // O horário atual NÃO deve bloquear o agendamento de datas futuras.
+  // Só desabilitamos o formulário quando o proprietário desligar
+  // manualmente o agendamento online.
+  const manuallyDisabled=settings.booking_enabled===false;
+  setBookingFormEnabled(!manuallyDisabled);
 
-  // Se acabou de fechar enquanto o usuário estava escolhendo horário,
-  // limpa o horário selecionado para impedir confirmação indevida.
-  if(!state.available&&selectedTime){
+  // Se o proprietário desligou manualmente, limpa o horário escolhido.
+  if(manuallyDisabled&&selectedTime){
     selectedTime="";
     renderSummary();
   }
@@ -342,6 +345,19 @@ function validateBookingDateAgainstSettings(date){
 
   const today=JK.todayISO();
   if(date<today)return "Escolha uma data de hoje em diante.";
+
+  // Se o cliente escolheu HOJE, respeitamos o horário atual.
+  // Para amanhã e datas futuras, o fato de estar fechado agora
+  // não interfere no agendamento.
+  if(date===today){
+    const state=bookingBusinessState();
+    if(state.reason==="after"){
+      return "O atendimento de hoje já encerrou. Escolha amanhã ou outra data disponível.";
+    }
+    if(state.reason==="day"){
+      return "A barbearia não atende hoje. Escolha o próximo dia de atendimento.";
+    }
+  }
 
   const maxDays=Number(settings.booking_advance_days||60);
   const max=new Date(today+"T12:00:00");
@@ -472,10 +488,12 @@ async function submitBooking(e){
   const bookingDate=String(f.get("date")||"");
   const paymentMethod=String(f.get("payment_method")||"").toLowerCase();
 
-  const businessState=bookingBusinessState();
-  if(!businessState.available){
+  // Estar fechado agora não impede agendar para outro dia.
+  // Bloqueio total só ocorre quando o proprietário desativa
+  // manualmente o agendamento online.
+  if(settings?.booking_enabled===false){
     applyAutomaticBookingStatus();
-    return toast("O agendamento online está indisponível neste momento.","error");
+    return toast("O agendamento online está temporariamente desativado.","error");
   }
 
   if(name.length<2)return toast("Digite seu nome.","error");
