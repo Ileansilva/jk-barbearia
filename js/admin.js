@@ -22,6 +22,7 @@ e dados da empresa pelo painel de Configurações.
 
 let session=null, services=[], barbers=[], galleryItems=[], financeBookings=[], currentProfileBarberId=null;
 let bookingRealtimeChannel=null;
+let bookingMessageSettingsCache=null;
 let bookingAlarmTimer=null;
 let bookingAudioContext=null;
 let bookingRealtimeStarted=false;
@@ -197,6 +198,165 @@ function startBookingRealtime(){
     .subscribe();
 }
 
+
+// ===== PROTEÇÃO DE AÇÕES SENSÍVEIS V28 =====
+let ownerProtectedPendingAction=null;
+
+function ensureOwnerProtectedModal(){
+  let modal=document.querySelector("#ownerProtectedActionModal");
+  if(modal)return modal;
+
+  modal=document.createElement("div");
+  modal.id="ownerProtectedActionModal";
+  modal.className="owner-protected-modal";
+  modal.hidden=true;
+  modal.innerHTML=`
+    <div class="owner-protected-backdrop" data-owner-protected-close></div>
+    <div class="owner-protected-card" role="dialog" aria-modal="true" aria-labelledby="ownerProtectedTitle">
+      <button class="owner-protected-close" type="button" data-owner-protected-close aria-label="Fechar">×</button>
+      <span class="eyebrow">Confirmação de segurança</span>
+      <h2 id="ownerProtectedTitle">Confirmar ação</h2>
+      <p id="ownerProtectedDescription" class="muted">Informe o e-mail e a senha do proprietário.</p>
+      <form id="ownerProtectedForm" class="form-grid">
+        <div class="field full">
+          <label>E-mail do proprietário</label>
+          <input id="ownerProtectedEmail" type="email" autocomplete="username" required>
+        </div>
+        <div class="field full">
+          <label>Senha</label>
+          <input id="ownerProtectedPassword" type="password" autocomplete="current-password" required>
+        </div>
+        <div id="ownerProtectedError" class="owner-protected-error"></div>
+        <div class="field full owner-protected-actions">
+          <button class="btn btn-outline" type="button" data-owner-protected-close>Cancelar</button>
+          <button id="ownerProtectedConfirmBtn" class="btn btn-primary" type="submit">Confirmar ação</button>
+        </div>
+      </form>
+    </div>`;
+  document.body.appendChild(modal);
+
+  modal.querySelectorAll("[data-owner-protected-close]").forEach(el=>{
+    el.addEventListener("click",closeOwnerProtectedModal);
+  });
+  modal.querySelector("#ownerProtectedForm").addEventListener("submit",confirmOwnerProtectedAction);
+  return modal;
+}
+
+function closeOwnerProtectedModal(){
+  const modal=document.querySelector("#ownerProtectedActionModal");
+  if(modal)modal.hidden=true;
+  ownerProtectedPendingAction=null;
+}
+
+async function ownerProtectedAction({title,description,confirmText="Confirmar",action}){
+  const modal=ensureOwnerProtectedModal();
+  ownerProtectedPendingAction=action;
+  modal.querySelector("#ownerProtectedTitle").textContent=title||"Confirmar ação";
+  modal.querySelector("#ownerProtectedDescription").textContent=description||"Informe o e-mail e a senha do proprietário.";
+  modal.querySelector("#ownerProtectedConfirmBtn").textContent=confirmText;
+  modal.querySelector("#ownerProtectedError").textContent="";
+
+  const userRes=await sb.auth.getUser();
+  const currentEmail=userRes.data?.user?.email||"";
+  modal.querySelector("#ownerProtectedEmail").value=currentEmail;
+  modal.querySelector("#ownerProtectedPassword").value="";
+  modal.hidden=false;
+  setTimeout(()=>modal.querySelector("#ownerProtectedPassword")?.focus(),50);
+}
+
+async function confirmOwnerProtectedAction(e){
+  e.preventDefault();
+  if(!ownerProtectedPendingAction)return;
+
+  const modal=ensureOwnerProtectedModal();
+  const email=String(modal.querySelector("#ownerProtectedEmail").value||"").trim();
+  const password=String(modal.querySelector("#ownerProtectedPassword").value||"");
+  const errorEl=modal.querySelector("#ownerProtectedError");
+  const btn=modal.querySelector("#ownerProtectedConfirmBtn");
+  const original=btn.textContent;
+
+  errorEl.textContent="";
+  btn.disabled=true;
+  btn.textContent="Verificando...";
+
+  try{
+    const before=await sb.auth.getUser();
+    const originalUser=before.data?.user;
+    if(!originalUser)throw new Error("Sessão do proprietário não encontrada.");
+    if(String(originalUser.email||"").toLowerCase()!==email.toLowerCase()){
+      throw new Error("Use o mesmo e-mail da conta atualmente conectada.");
+    }
+
+    const login=await sb.auth.signInWithPassword({email,password});
+    if(login.error)throw new Error("E-mail ou senha incorretos.");
+    if(login.data?.user?.id!==originalUser.id){
+      throw new Error("A autenticação não pertence ao proprietário conectado.");
+    }
+
+    const action=ownerProtectedPendingAction;
+    ownerProtectedPendingAction=null;
+    modal.hidden=true;
+    await action();
+  }catch(error){
+    errorEl.textContent=error?.message||"Não foi possível confirmar sua identidade.";
+  }finally{
+    btn.disabled=false;
+    btn.textContent=original;
+  }
+}
+window.ownerProtectedAction=ownerProtectedAction;
+
+// ===== WHATSAPP DE CONFIRMAÇÃO / CANCELAMENTO V28 =====
+function ownerWhatsAppDigits(value){
+  let digits=String(value||"").replace(/\D/g,"").replace(/^0+/,"");
+  if((digits.length===10||digits.length===11)&&!digits.startsWith("55"))digits="55"+digits;
+  return digits;
+}
+
+async function getBookingMessageSettings(){
+  if(bookingMessageSettingsCache)return bookingMessageSettingsCache;
+  const {data,error}=await sb.from("settings")
+    .select("customer_arrival_minutes,booking_confirm_message_template,booking_cancel_message_template")
+    .eq("id",1).single();
+  if(error)throw error;
+  bookingMessageSettingsCache=data||{};
+  return bookingMessageSettingsCache;
+}
+
+function fillBookingMessage(template,b,settings){
+  const date=b.booking_date
+    ? new Date(b.booking_date+"T12:00:00").toLocaleDateString("pt-BR")
+    : "—";
+  const values={
+    "{nome}":b.client_name||"Cliente",
+    "{data}":date,
+    "{horario}":String(b.booking_time||"").slice(0,5),
+    "{barbeiro}":b.barber_name||"—",
+    "{servico}":b.service_name||"—",
+    "{minutos}":String(Number(settings?.customer_arrival_minutes||10))
+  };
+  let text=String(template||"");
+  Object.entries(values).forEach(([key,value])=>{text=text.split(key).join(value);});
+  return text;
+}
+
+function openBookingWhatsAppWindow(){
+  try{return window.open("about:blank","_blank");}
+  catch(e){return null;}
+}
+
+function navigateWhatsApp(win,phone,message){
+  const digits=ownerWhatsAppDigits(phone);
+  if(digits.length<12){
+    win?.close?.();
+    adminToast("Agendamento atualizado, mas o WhatsApp do cliente está incompleto.",true);
+    return;
+  }
+  const url=`https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  if(win&&!win.closed)win.location.href=url;
+  else window.open(url,"_blank","noopener");
+}
+
 function showAdmin(){$("#loginOverlay")?.classList.add("hidden");}
 // ===== SAIR DO PAINEL =====
 async function logout(){stopBookingAlarm();if(bookingRealtimeChannel){try{await sb.removeChannel(bookingRealtimeChannel);}catch(e){}}await sb.auth.signOut();location.reload();}
@@ -280,10 +440,14 @@ async function renderBookings(){
     <td><span class="status ${b.status}">${b.status}</span></td>
     <td>${JK.esc(b.notes||"—")}</td>
     <td><div class="action-row">
-      <button type="button" class="mini-btn" onclick="setStatus(${b.id},'concluido',this)">Concluir</button>
-      <button type="button" class="mini-btn" onclick="setStatus(${b.id},'confirmado',this)">Confirmar</button>
-      <button type="button" class="mini-btn" onclick="setStatus(${b.id},'cancelado',this)">Cancelar</button>
-      <button type="button" class="mini-btn" onclick="deleteBooking(${b.id},this)">Excluir</button>
+      ${b.status==="pendente"?`
+        <button type="button" class="mini-btn primary-mini" onclick="setStatus(${b.id},'confirmado',this)">Confirmar</button>
+        <button type="button" class="mini-btn" onclick="setStatus(${b.id},'cancelado',this)">Cancelar</button>
+      `:b.status==="confirmado"?`
+        <button type="button" class="mini-btn primary-mini" onclick="setStatus(${b.id},'concluido',this)">Concluir</button>
+        <button type="button" class="mini-btn" onclick="setStatus(${b.id},'cancelado',this)">Cancelar</button>
+      `:""}
+      <button type="button" class="mini-btn danger-mini" onclick="deleteBooking(${b.id},this)">Excluir</button>
     </div></td>
   </tr>`).join("");
 }
@@ -311,15 +475,25 @@ async function updateBookingPayment(id,method,selectEl){
 async function setStatus(id,status,button=null){
   const key=`status:${id}`;
   if(!adminLock(key))return;
-  adminBusy(button,true,status==="concluido"?"Concluindo...":"Salvando...");
+
+  const shouldWhatsApp=["confirmado","cancelado"].includes(status);
+  const waWindow=shouldWhatsApp?openBookingWhatsAppWindow():null;
+  adminBusy(button,true,status==="concluido"?"Concluindo...":status==="confirmado"?"Confirmando...":"Cancelando...");
+
   try{
     let payload={status,completed_at:status==="concluido"?new Date().toISOString():null};
-    if(status==="concluido"){
+
+    const needsBooking=status==="concluido"||shouldWhatsApp;
+    let bookingData=null;
+
+    if(needsBooking){
       const {data:b,error:loadError}=await sb.from("bookings")
-        .select("id,price,barber_id,barber_commission_percent,barber_commission_amount")
+        .select("id,client_name,phone,service_name,barber_name,booking_date,booking_time,price,barber_id,barber_commission_percent,barber_commission_amount,status")
         .eq("id",id).single();
       if(loadError)throw loadError;
-      if(b?.barber_id&&(b.barber_commission_percent===null||b.barber_commission_amount===null)){
+      bookingData=b;
+
+      if(status==="concluido"&&b?.barber_id&&(b.barber_commission_percent===null||b.barber_commission_amount===null)){
         const cached=barbers.find(x=>Number(x.id)===Number(b.barber_id));
         let br=cached;
         if(!br){
@@ -332,11 +506,31 @@ async function setStatus(id,status,button=null){
         payload.barber_commission_amount=Number((Number(b.price||0)*pct/100).toFixed(2));
       }
     }
+
     const {error}=await sb.from("bookings").update(payload).eq("id",id);
     if(error)throw error;
-    adminToast(status==="concluido"?"Corte concluído e lançado no financeiro.":"Agendamento atualizado.");
+
+    if(shouldWhatsApp&&bookingData){
+      const settings=await getBookingMessageSettings();
+      const template=status==="confirmado"
+        ? settings.booking_confirm_message_template
+        : settings.booking_cancel_message_template;
+      const message=fillBookingMessage(template,bookingData,settings);
+      navigateWhatsApp(waWindow,bookingData.phone,message);
+    }else{
+      waWindow?.close?.();
+    }
+
+    adminToast(
+      status==="concluido"
+        ?"Corte concluído e lançado no financeiro."
+        :status==="confirmado"
+          ?"Agendamento confirmado. A mensagem do WhatsApp foi preparada."
+          :"Agendamento cancelado. A mensagem do WhatsApp foi preparada."
+    );
     await renderBookings();
   }catch(error){
+    waWindow?.close?.();
     adminToast("Erro ao atualizar: "+(error?.message||error),true);
   }finally{
     adminBusy(button,false);
@@ -345,16 +539,27 @@ async function setStatus(id,status,button=null){
 }
 
 async function deleteBooking(id,button=null){
-  if(!confirm("Excluir este agendamento?"))return;
-  const key=`deleteBooking:${id}`; if(!adminLock(key))return;
-  adminBusy(button,true,"Excluindo...");
-  try{
-    const {error}=await sb.from("bookings").delete().eq("id",id);
-    if(error)throw error;
-    adminToast("Agendamento excluído.");
-    await renderBookings();
-  }catch(error){adminToast("Erro ao excluir: "+error.message,true);}
-  finally{adminBusy(button,false);adminUnlock(key);}
+  await ownerProtectedAction({
+    title:"Excluir agendamento",
+    description:"Esta ação remove o agendamento. Informe o e-mail e a senha do proprietário para continuar.",
+    confirmText:"Excluir agendamento",
+    action:async()=>{
+      const key=`deleteBooking:${id}`;
+      if(!adminLock(key))return;
+      adminBusy(button,true,"Excluindo...");
+      try{
+        const {error}=await sb.from("bookings").delete().eq("id",id);
+        if(error)throw error;
+        adminToast("Agendamento excluído.");
+        await renderBookings();
+      }catch(error){
+        adminToast("Erro ao excluir: "+error.message,true);
+      }finally{
+        adminBusy(button,false);
+        adminUnlock(key);
+      }
+    }
+  });
 }
 
 // ===== CARDS E GESTÃO DE SERVIÇOS =====
@@ -541,11 +746,17 @@ async function toggleService(id,active){
 }
 
 async function removeService(id){
-  if(!confirm("Excluir este serviço?"))return;
-  const {error}=await sb.from("services").delete().eq("id",id);
-  if(error)return adminToast("Não foi possível excluir: "+error.message,true);
-  adminToast("Serviço excluído.");
-  await renderServicesAdmin();await renderKPIs();
+  await ownerProtectedAction({
+    title:"Excluir serviço",
+    description:"Confirme sua identidade para excluir este serviço.",
+    confirmText:"Excluir serviço",
+    action:async()=>{
+      const {error}=await sb.from("services").delete().eq("id",id);
+      if(error)return adminToast("Não foi possível excluir: "+error.message,true);
+      adminToast("Serviço excluído.");
+      await renderServicesAdmin();await renderKPIs();
+    }
+  });
 }
 
 // ===== CARDS E GESTÃO DE BARBEIROS =====
@@ -667,11 +878,17 @@ async function toggleBarber(id,active){
 }
 
 async function removeBarber(id){
-  if(!confirm("Excluir este barbeiro? Se ele já tiver agendamentos, prefira desativá-lo."))return;
-  const {error}=await sb.from("barbers").delete().eq("id",id);
-  if(error)return adminToast("Não foi possível excluir. Se houver agendamentos, desative o barbeiro em vez de excluir.",true);
-  adminToast("Barbeiro excluído.");
-  await renderBarbersAdmin();await renderKPIs();
+  await ownerProtectedAction({
+    title:"Excluir barbeiro",
+    description:"Confirme sua identidade para excluir este barbeiro. Se ele possui histórico, prefira desativá-lo.",
+    confirmText:"Excluir barbeiro",
+    action:async()=>{
+      const {error}=await sb.from("barbers").delete().eq("id",id);
+      if(error)return adminToast("Não foi possível excluir. Se houver agendamentos, desative o barbeiro em vez de excluir.",true);
+      adminToast("Barbeiro excluído.");
+      await renderBarbersAdmin();await renderKPIs();
+    }
+  });
 }
 
 
@@ -1295,7 +1512,19 @@ function editGalleryItem(id){
   $("#galleryForm").scrollIntoView({behavior:"smooth",block:"start"}); adminToast("Foto carregada para edição.");
 }
 async function toggleGalleryItem(id,active){const {error}=await sb.from("gallery").update({active}).eq("id",id);if(error)return adminToast("Erro ao alterar foto: "+error.message,true);adminToast(active?"Foto publicada.":"Foto ocultada.");await renderGalleryAdmin();await renderKPIs();}
-async function removeGalleryItem(id){if(!confirm("Excluir esta foto da galeria?"))return;const {error}=await sb.from("gallery").delete().eq("id",id);if(error)return adminToast("Erro ao excluir: "+error.message,true);adminToast("Foto excluída da galeria.");await renderGalleryAdmin();await renderKPIs();}
+async function removeGalleryItem(id){
+  await ownerProtectedAction({
+    title:"Excluir foto",
+    description:"Confirme sua identidade para excluir esta foto da galeria.",
+    confirmText:"Excluir foto",
+    action:async()=>{
+      const {error}=await sb.from("gallery").delete().eq("id",id);
+      if(error)return adminToast("Erro ao excluir: "+error.message,true);
+      adminToast("Foto excluída da galeria.");
+      await renderGalleryAdmin();await renderKPIs();
+    }
+  });
+}
 
 // ===== CARREGA CONFIGURAÇÕES =====
 async function loadSettings(){
@@ -1315,6 +1544,14 @@ async function loadSettings(){
   if($("#bookingAdvanceDays"))$("#bookingAdvanceDays").value=Number(data.booking_advance_days||60);
   if($("#bookingMinNotice"))$("#bookingMinNotice").value=String(data.booking_min_notice_minutes||0);
   if($("#bookingNotice"))$("#bookingNotice").value=data.booking_notice||"";
+  if($("#customerArrivalMinutes"))$("#customerArrivalMinutes").value=Number(data.customer_arrival_minutes||10);
+  if($("#bookingConfirmMessageTemplate"))$("#bookingConfirmMessageTemplate").value=data.booking_confirm_message_template||"";
+  if($("#bookingCancelMessageTemplate"))$("#bookingCancelMessageTemplate").value=data.booking_cancel_message_template||"";
+  bookingMessageSettingsCache={
+    customer_arrival_minutes:Number(data.customer_arrival_minutes||10),
+    booking_confirm_message_template:data.booking_confirm_message_template||"",
+    booking_cancel_message_template:data.booking_cancel_message_template||""
+  };
 
   initSettingsVisualControls();
 }
@@ -1356,12 +1593,16 @@ async function saveSettings(e){
       booking_enabled:$("#bookingEnabled")?.checked!==false,
       booking_advance_days:Math.max(1,Math.min(365,Number(f.get("bookingAdvanceDays")||60))),
       booking_min_notice_minutes:Math.max(0,Number(f.get("bookingMinNotice")||0)),
-      booking_notice:String(f.get("bookingNotice")||"").trim()
+      booking_notice:String(f.get("bookingNotice")||"").trim(),
+      customer_arrival_minutes:Math.max(0,Math.min(180,Number(f.get("customerArrivalMinutes")||10))),
+      booking_confirm_message_template:String(f.get("bookingConfirmMessageTemplate")||"").trim(),
+      booking_cancel_message_template:String(f.get("bookingCancelMessageTemplate")||"").trim()
     };
 
     const {error}=await sb.from("settings").update(payload).eq("id",1);
     if(error)throw error;
 
+    bookingMessageSettingsCache=null;
     adminToast("Configurações salvas. A agenda dos clientes já está usando as novas regras.");
     await loadSettings();
   }catch(err){
