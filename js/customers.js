@@ -510,16 +510,26 @@ async function saveCustomer(e){
 async function deactivateCustomer(id){
   const customer=customerCRMCustomers.find(c=>Number(c.id)===Number(id));
   if(!customer)return;
-  if(!confirm(`Inativar ${customer.full_name}? O histórico será mantido.`))return;
 
-  const {error}=await sb.from("jk_customers")
-    .update({active:false,updated_at:new Date().toISOString()})
-    .eq("id",id);
+  if(!window.ownerProtectedAction){
+    return adminToast("Proteção do proprietário ainda não carregou. Atualize a página.",true);
+  }
 
-  if(error)return adminToast("Erro ao inativar cliente: "+error.message,true);
+  await window.ownerProtectedAction({
+    title:"Inativar cliente",
+    description:`O histórico de ${customer.full_name} será mantido, mas o cadastro ficará inativo. Confirme com e-mail e senha.`,
+    confirmText:"Inativar cliente",
+    action:async()=>{
+      const {error}=await sb.from("jk_customers")
+        .update({active:false,updated_at:new Date().toISOString()})
+        .eq("id",id);
 
-  adminToast("Cliente inativado. O histórico foi preservado.");
-  await loadCustomerCRM();
+      if(error)return adminToast("Erro ao inativar cliente: "+error.message,true);
+
+      adminToast("Cliente inativado. O histórico foi preservado.");
+      await loadCustomerCRM();
+    }
+  });
 }
 
 
