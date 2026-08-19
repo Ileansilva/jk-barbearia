@@ -21,6 +21,7 @@ let settings=null;
 let services=[];
 let barbers=[];
 let bookingStatusTimer=null;
+let bookingTimesRequestSeq=0;
 
 const qs=(s)=>document.querySelector(s);
 
@@ -362,6 +363,7 @@ async function renderTimes(){
   const barberId=Number(qs("#barber")?.value||0);
   const root=qs("#times");
   if(!root)return;
+  const requestSeq=++bookingTimesRequestSeq;
 
   if(!serviceId||!barberId||!validISODate(date)){
     root.innerHTML='<div class="empty" style="grid-column:1/-1">Escolha serviço, barbeiro e data.</div>';
@@ -389,6 +391,7 @@ async function renderTimes(){
     });
 
     if(error)throw error;
+    if(requestSeq!==bookingTimesRequestSeq)return;
 
     const available=(data||[])
       .map(x=>String(x.available_time??x).slice(0,5))
@@ -416,6 +419,7 @@ async function renderTimes(){
       });
     });
   }catch(err){
+    if(requestSeq!==bookingTimesRequestSeq)return;
     console.error("JK Booking renderTimes:",err);
     root.innerHTML='<div class="empty booking-error" style="grid-column:1/-1">Não foi possível consultar os horários. Tente novamente.</div>';
     toast("Erro ao consultar os horários disponíveis.","error");
