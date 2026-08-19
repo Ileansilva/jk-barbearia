@@ -14,3 +14,17 @@ JK BARBEARIA - ENCAIXE E FILA V17
 .booking-origin-badge{display:inline-flex;margin-top:4px;padding:3px 6px;border-radius:999px;border:1px solid rgba(255,255,255,.08);font-size:.56rem;font-weight:850;text-transform:uppercase;letter-spacing:.04em}
 .booking-origin-badge.online{color:#9da5ac}.booking-origin-badge.encaixe{color:#e6c46b;border-color:rgba(214,168,79,.18)}.booking-origin-badge.presencial{color:#8bd4a7;border-color:rgba(65,194,116,.18)}
 @media(max-width:700px){.walkin-queue-item{grid-template-columns:46px minmax(0,1fr)}.walkin-actions{grid-column:1/-1;justify-content:stretch}.walkin-actions .btn,.walkin-actions .mini-btn{flex:1}.walkin-datetime{grid-template-columns:1fr}}
+
+
+/* ===== ENCAIXE PRESENCIAL V33 ===== */
+.walkin-form-card{
+  scroll-margin-top:18px;
+}
+.walkin-datetime{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+@media(max-width:560px){
+  .walkin-datetime{grid-template-columns:1fr}
+}
