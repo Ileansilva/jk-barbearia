@@ -95,3 +95,17 @@ JK BARBEARIA - CAIXA V17
 /* ===== FECHAMENTO INSTANTÂNEO V31 ===== */
 #cashOpenState[hidden]{display:none!important}
 #cashClosedState:not([hidden]){display:grid}
+
+
+/* ===== V32 HISTÓRICO CAIXA ===== */
+.cash-history-filters{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr)) auto;gap:12px;align-items:end;margin:18px 0 14px}
+.cash-history-filter-actions{display:flex;align-items:end;padding-bottom:1px}
+.cash-history-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0 10px}
+.cash-history-summary article{min-width:0;padding:14px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:linear-gradient(145deg,rgba(255,255,255,.025),rgba(255,255,255,.008))}
+.cash-history-summary span,.cash-history-summary small{display:block;color:#8f969d}
+.cash-history-summary strong{display:block;margin:5px 0 3px;color:#f5f1e8;font-size:1.08rem;overflow-wrap:anywhere}
+.cash-history-period-label{min-height:25px;margin:6px 0 10px;color:#d8bd77;font-size:.78rem;font-weight:700}
+.cash-summary-negative{color:#ff9d9d!important}
+.cash-summary-positive{color:#8de0ad!important}
+@media(max-width:980px){.cash-history-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.cash-history-filter-actions{grid-column:1/-1}.cash-history-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:580px){.cash-history-filters{grid-template-columns:1fr}.cash-history-filter-actions{grid-column:auto}.cash-history-filter-actions .btn{width:100%}.cash-history-summary{grid-template-columns:1fr 1fr}}
