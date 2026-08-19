@@ -90,3 +90,8 @@ JK BARBEARIA - CAIXA V17
   .cash-movement-value{grid-column:2;text-align:left}
   .cash-movement-delete-btn{grid-column:3;grid-row:1 / span 2}
 }
+
+
+/* ===== FECHAMENTO INSTANTÂNEO V31 ===== */
+#cashOpenState[hidden]{display:none!important}
+#cashClosedState:not([hidden]){display:grid}
