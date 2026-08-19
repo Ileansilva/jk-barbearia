@@ -13,6 +13,7 @@ JK BARBEARIA - ABERTURA E FECHAMENTO DE CAIXA V17
 */
 let currentCashRegister=null,currentCashBookings=[],currentCashMovements=[];
 let pendingCashDeleteId=null,pendingCashDeleteRow=null;
+let allCashHistoryRows=[];
 const cashActionLocks=new Set();
 let cashPendingMovementCount=0;
 
@@ -56,6 +57,11 @@ document.addEventListener("DOMContentLoaded",()=>{
   cashQ("#closeDeleteCashModalBtn")?.addEventListener("click",closeDeleteCashModal);
   cashQ("#cancelDeleteCashBtn")?.addEventListener("click",closeDeleteCashModal);
   document.querySelector("[data-close-cash-delete]")?.addEventListener("click",closeDeleteCashModal);
+
+  cashQ("#cashHistoryYearFilter")?.addEventListener("change",applyCashHistoryFilters);
+  cashQ("#cashHistoryMonthFilter")?.addEventListener("change",applyCashHistoryFilters);
+  cashQ("#cashHistoryStatusFilter")?.addEventListener("change",applyCashHistoryFilters);
+  cashQ("#clearCashHistoryFiltersBtn")?.addEventListener("click",clearCashHistoryFilters);
 });
 
 async function renderCashAdmin(){
@@ -496,14 +502,87 @@ async function closeCashRegister(e){
   }
 }
 
-async function renderCashHistory(){
+function cashHistoryYearOptions(rows){
+  const select=cashQ("#cashHistoryYearFilter");
+  if(!select)return;
+  const current=select.value;
+  const thisYear=String(new Date().getFullYear());
+  const years=[...new Set((rows||[]).map(r=>String(new Date(r.opened_at).getFullYear())).concat([thisYear]))]
+    .sort((a,b)=>Number(b)-Number(a));
+  select.innerHTML=`<option value="">Todos os anos</option>`+
+    years.map(y=>`<option value="${y}">${y}</option>`).join("");
+  if(current&&years.includes(current))select.value=current;
+  else if(!current)select.value=thisYear;
+}
+
+function cashHistoryFilteredRows(){
+  const year=cashQ("#cashHistoryYearFilter")?.value||"";
+  const month=cashQ("#cashHistoryMonthFilter")?.value||"";
+  const status=cashQ("#cashHistoryStatusFilter")?.value||"";
+
+  return allCashHistoryRows.filter(r=>{
+    const d=new Date(r.opened_at);
+    const y=String(d.getFullYear());
+    const m=String(d.getMonth()+1).padStart(2,"0");
+    if(year&&y!==year)return false;
+    if(month&&m!==month)return false;
+    if(status==="fechado"&&r.status!=="fechado")return false;
+    if(status==="aberto"&&r.status!=="aberto")return false;
+    if(status==="diferenca"){
+      if(r.status!=="fechado")return false;
+      if(Math.abs(Number(r.difference_amount||0))<0.01)return false;
+    }
+    return true;
+  });
+}
+
+function renderCashHistorySummary(rows){
+  const sum=key=>rows.reduce((acc,r)=>acc+Number(r[key]||0),0);
+  const values={
+    "#cashHistoryCount":String(rows.length),
+    "#cashHistoryGross":cashMoney(sum("gross_total")),
+    "#cashHistoryPix":cashMoney(sum("pix_total")),
+    "#cashHistoryCard":cashMoney(sum("card_total")),
+    "#cashHistoryMoney":cashMoney(sum("cash_sales_total")),
+    "#cashHistoryIn":cashMoney(sum("manual_in_total")),
+    "#cashHistoryOut":cashMoney(sum("manual_out_total")),
+    "#cashHistoryDiff":cashMoney(sum("difference_amount"))
+  };
+  Object.entries(values).forEach(([selector,value])=>{
+    const el=cashQ(selector); if(el)el.textContent=value;
+  });
+
+  const diffEl=cashQ("#cashHistoryDiff");
+  if(diffEl){
+    const diff=sum("difference_amount");
+    diffEl.classList.toggle("cash-summary-negative",diff<0);
+    diffEl.classList.toggle("cash-summary-positive",diff>0);
+  }
+
+  const labelEl=cashQ("#cashHistoryPeriodLabel");
+  if(labelEl){
+    const year=cashQ("#cashHistoryYearFilter")?.value||"";
+    const month=cashQ("#cashHistoryMonthFilter")?.value||"";
+    const status=cashQ("#cashHistoryStatusFilter")?.value||"";
+    const months={"01":"Janeiro","02":"Fevereiro","03":"Março","04":"Abril","05":"Maio","06":"Junho","07":"Julho","08":"Agosto","09":"Setembro","10":"Outubro","11":"Novembro","12":"Dezembro"};
+    const parts=[];
+    if(month)parts.push(months[month]);
+    if(year)parts.push(year);
+    if(status==="fechado")parts.push("caixas fechados");
+    if(status==="aberto")parts.push("caixas abertos");
+    if(status==="diferenca")parts.push("caixas com diferença");
+    labelEl.textContent=parts.length?`Exibindo: ${parts.join(" · ")}`:"Exibindo todo o histórico";
+  }
+}
+
+function renderCashHistoryRows(rows){
   const root=cashQ("#cashHistoryRows");
   if(!root)return;
-  const {data,error}=await sb.from("cash_registers").select("*").order("opened_at",{ascending:false}).limit(40);
-  if(error){root.innerHTML='<tr><td colspan="9">Erro ao carregar histórico.</td></tr>';return;}
-  if(!data?.length){root.innerHTML='<tr><td colspan="9"><div class="empty">Nenhum caixa registrado.</div></td></tr>';return;}
-
-  root.innerHTML=data.map(r=>{
+  if(!rows.length){
+    root.innerHTML='<tr><td colspan="9"><div class="empty">Nenhum caixa encontrado para os filtros selecionados.</div></td></tr>';
+    return;
+  }
+  root.innerHTML=rows.map(r=>{
     const opened=new Date(r.opened_at);
     const closed=r.closed_at?new Date(r.closed_at):null;
     const diff=Number(r.difference_amount||0);
@@ -522,6 +601,39 @@ async function renderCashHistory(){
       </div></td>
     </tr>`;
   }).join("");
+}
+
+function applyCashHistoryFilters(){
+  const rows=cashHistoryFilteredRows();
+  renderCashHistorySummary(rows);
+  renderCashHistoryRows(rows);
+}
+
+function clearCashHistoryFilters(){
+  const year=cashQ("#cashHistoryYearFilter");
+  const month=cashQ("#cashHistoryMonthFilter");
+  const status=cashQ("#cashHistoryStatusFilter");
+  if(year)year.value="";
+  if(month)month.value="";
+  if(status)status.value="";
+  applyCashHistoryFilters();
+}
+
+async function renderCashHistory(){
+  const root=cashQ("#cashHistoryRows");
+  if(!root)return;
+  const {data,error}=await sb.from("cash_registers")
+    .select("*")
+    .order("opened_at",{ascending:false});
+
+  if(error){
+    root.innerHTML='<tr><td colspan="9">Erro ao carregar histórico.</td></tr>';
+    return;
+  }
+
+  allCashHistoryRows=data||[];
+  cashHistoryYearOptions(allCashHistoryRows);
+  applyCashHistoryFilters();
 }
 
 async function showCashHistoryDetail(id){
