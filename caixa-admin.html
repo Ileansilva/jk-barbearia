@@ -124,7 +124,45 @@
     </section>
 
     <article class="card cash-history-card">
-      <div class="card-head"><div><span class="eyebrow">Conferência</span><h2>Histórico de caixas</h2><p class="muted">Últimos fechamentos com vendas e diferenças.</p></div></div>
+      <div class="card-head">
+        <div>
+          <span class="eyebrow">Conferência</span>
+          <h2>Histórico de caixas</h2>
+          <p class="muted">Consulte caixas por ano, mês e situação.</p>
+        </div>
+      </div>
+
+      <div class="cash-history-filters">
+        <div class="field"><label>Ano</label><select id="cashHistoryYearFilter"></select></div>
+        <div class="field"><label>Mês</label><select id="cashHistoryMonthFilter">
+          <option value="">Todos os meses</option>
+          <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+          <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+          <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select></div>
+        <div class="field"><label>Status</label><select id="cashHistoryStatusFilter">
+          <option value="">Todos os caixas</option>
+          <option value="fechado">Só fechados</option>
+          <option value="aberto">Só abertos</option>
+          <option value="diferenca">Só com diferença</option>
+        </select></div>
+        <div class="cash-history-filter-actions"><button id="clearCashHistoryFiltersBtn" class="btn btn-outline" type="button">Limpar filtros</button></div>
+      </div>
+
+      <div class="cash-history-summary">
+        <article><span>Caixas</span><strong id="cashHistoryCount">0</strong><small>no período</small></article>
+        <article><span>Vendas</span><strong id="cashHistoryGross">R$ 0,00</strong><small>faturamento bruto</small></article>
+        <article><span>Pix</span><strong id="cashHistoryPix">R$ 0,00</strong><small>recebido via Pix</small></article>
+        <article><span>Cartão</span><strong id="cashHistoryCard">R$ 0,00</strong><small>recebido no cartão</small></article>
+        <article><span>Dinheiro</span><strong id="cashHistoryMoney">R$ 0,00</strong><small>vendas em dinheiro</small></article>
+        <article><span>Entradas</span><strong id="cashHistoryIn">R$ 0,00</strong><small>entradas / suprimentos</small></article>
+        <article><span>Saídas</span><strong id="cashHistoryOut">R$ 0,00</strong><small>saídas / sangrias</small></article>
+        <article><span>Diferenças</span><strong id="cashHistoryDiff">R$ 0,00</strong><small>saldo das diferenças</small></article>
+      </div>
+
+      <div id="cashHistoryPeriodLabel" class="cash-history-period-label"></div>
+
       <div class="table-wrap">
         <table class="table">
           <thead><tr><th>Data</th><th>Abertura</th><th>Fechamento</th><th>Vendas</th><th>Pix</th><th>Cartão</th><th>Dinheiro</th><th>Diferença</th><th>Ações</th></tr></thead>
