@@ -137,6 +137,36 @@
       </div>
     </section>
 
+
+    <section class="settings-section card">
+      <div class="settings-section-head">
+        <div>
+          <span class="settings-step">06</span>
+          <h3>Confirmação e WhatsApp</h3>
+          <p class="muted">Defina a antecedência recomendada e as mensagens usadas ao confirmar ou cancelar um agendamento.</p>
+        </div>
+      </div>
+      <div class="settings-grid">
+        <div class="field">
+          <label>Cliente deve chegar com</label>
+          <div class="input-suffix">
+            <input id="customerArrivalMinutes" name="customerArrivalMinutes" type="number" min="0" max="180" value="10">
+            <span>minutos antes</span>
+          </div>
+        </div>
+        <div class="field full">
+          <label>Mensagem de confirmação</label>
+          <textarea id="bookingConfirmMessageTemplate" name="bookingConfirmMessageTemplate" rows="4" maxlength="700"></textarea>
+          <small class="muted">Variáveis: <b>{nome}</b>, <b>{data}</b>, <b>{horario}</b>, <b>{barbeiro}</b>, <b>{servico}</b> e <b>{minutos}</b>.</small>
+        </div>
+        <div class="field full">
+          <label>Mensagem de cancelamento</label>
+          <textarea id="bookingCancelMessageTemplate" name="bookingCancelMessageTemplate" rows="4" maxlength="700"></textarea>
+          <small class="muted">Variáveis: <b>{nome}</b>, <b>{data}</b>, <b>{horario}</b>, <b>{barbeiro}</b> e <b>{servico}</b>.</small>
+        </div>
+      </div>
+    </section>
+
     <div class="settings-save-bar">
       <div>
         <strong>Alterações na agenda</strong>
