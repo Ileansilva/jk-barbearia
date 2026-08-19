@@ -353,6 +353,36 @@ async function waitForCashClosed(cashId,{attempts=10,delay=450}={}){
   return null;
 }
 
+
+function setCashUIClosedImmediately(form=null){
+  if(form)form.reset();
+
+  currentCashRegister=null;
+  currentCashBookings=[];
+  currentCashMovements=[];
+  cashPendingMovementCount=0;
+
+  const closedState=cashQ("#cashClosedState");
+  const openState=cashQ("#cashOpenState");
+
+  if(closedState){
+    closedState.hidden=false;
+    closedState.style.display="";
+  }
+  if(openState){
+    openState.hidden=true;
+    openState.style.display="none";
+  }
+
+  const detail=cashQ("#cashHistoryDetail");
+  if(detail)detail.hidden=true;
+
+  // Atualiza o histórico sem segurar a troca visual da tela.
+  Promise.resolve(renderCashHistory()).catch(error=>{
+    console.warn("JK Caixa: histórico após fechamento",error);
+  });
+}
+
 async function closeCashRegister(e){
   e.preventDefault();
   if(!currentCashRegister)return adminToast("Nenhum caixa aberto.",true);
@@ -388,86 +418,73 @@ async function closeCashRegister(e){
   cashSetBusy(btn,true,"Fechando caixa...");
 
   try{
-    let rpcData=null;
-    let rpcError=null;
-
+    let rpc;
     try{
-      const rpc=await sb.rpc("close_cash_register",{
+      rpc=await sb.rpc("close_cash_register",{
         p_counted_cash:counted,
         p_notes:notes
       });
-      rpcData=rpc.data;
-      rpcError=rpc.error;
     }catch(error){
-      rpcError=error;
+      rpc={data:null,error};
     }
 
-    let closedRow=null;
+    // CASO NORMAL:
+    // O RPC só retorna sucesso depois da transação ter sido concluída.
+    // Portanto, se não houve erro, mudamos a interface IMEDIATAMENTE.
+    if(!rpc.error){
+      setCashUIClosedImmediately(e.currentTarget);
 
-    // Se o RPC respondeu sem erro, ainda confirmamos o registro real.
-    // Se houve timeout/falha de rede, aguardamos o Supabase finalizar a transação.
-    if(!rpcError){
-      closedRow=await waitForCashClosed(closingCashId,{attempts:5,delay:250});
-    }else{
-      cashSetBusy(btn,true,"Confirmando fechamento...");
-      closedRow=await waitForCashClosed(closingCashId,{attempts:12,delay:450});
+      adminToast(
+        Math.abs(diff)<0.01
+          ?"Caixa fechado e conferido com sucesso."
+          :`Caixa fechado. Diferença registrada: ${cashMoney(diff)}.`
+      );
+
+      setTimeout(()=>{
+        cashQ("#cashHistoryRows")?.closest(".cash-history-card")
+          ?.scrollIntoView({behavior:"smooth",block:"start"});
+      },120);
+
+      // Confirma silenciosamente em segundo plano.
+      waitForCashClosed(closingCashId,{attempts:4,delay:300}).catch(()=>{});
+      return;
     }
 
-    if(!closedRow){
-      // Última verificação: pode haver atraso maior em rede móvel/lenta.
-      cashSetBusy(btn,true,"Verificando caixa...");
-      await cashWait(1000);
-      closedRow=await waitForCashClosed(closingCashId,{attempts:5,delay:500});
+    // CASO DE REDE INSTÁVEL:
+    // Pode ter fechado no banco mesmo com erro de resposta.
+    cashSetBusy(btn,true,"Confirmando fechamento...");
+    const closedRow=await waitForCashClosed(closingCashId,{attempts:12,delay:450});
+
+    if(closedRow){
+      setCashUIClosedImmediately(e.currentTarget);
+
+      const realDiff=Number(
+        closedRow.difference_amount ??
+        (Number(closedRow.counted_cash??counted)-Number(closedRow.expected_cash??st.expected))
+      );
+
+      adminToast(
+        Math.abs(realDiff)<0.01
+          ?"Caixa fechado e conferido com sucesso."
+          :`Caixa fechado. Diferença registrada: ${cashMoney(realDiff)}.`
+      );
+
+      setTimeout(()=>{
+        cashQ("#cashHistoryRows")?.closest(".cash-history-card")
+          ?.scrollIntoView({behavior:"smooth",block:"start"});
+      },120);
+      return;
     }
 
-    if(!closedRow){
-      // Só agora mostramos erro, depois de várias confirmações.
-      if(rpcError)throw rpcError;
-      throw new Error("Não foi possível confirmar o fechamento do caixa.");
-    }
-
-    e.currentTarget.reset();
-    currentCashRegister=null;
-    currentCashBookings=[];
-    currentCashMovements=[];
-    cashPendingMovementCount=0;
-
-    cashQ("#cashClosedState").hidden=false;
-    cashQ("#cashOpenState").hidden=true;
-
-    await renderCashHistory();
-
-    const expected=Number(closedRow.expected_cash??st.expected);
-    const actual=Number(closedRow.counted_cash??counted);
-    const realDiff=Number(closedRow.difference_amount??(actual-expected));
-
-    adminToast(
-      Math.abs(realDiff)<0.01
-        ?"Caixa fechado e conferido com sucesso."
-        :`Caixa fechado. Diferença registrada: ${cashMoney(realDiff)}.`
-    );
-
-    setTimeout(()=>{
-      cashQ("#cashHistoryRows")?.closest(".cash-history-card")
-        ?.scrollIntoView({behavior:"smooth",block:"start"});
-    },100);
+    throw rpc.error||new Error("Não foi possível confirmar o fechamento.");
 
   }catch(error){
     console.error("JK Caixa closeCashRegister:",error);
 
-    // Se ainda assim ocorreu exceção na interface, fazemos uma última
-    // confirmação antes de permitir qualquer mensagem de erro.
     const finalCheck=await waitForCashClosed(closingCashId,{attempts:4,delay:600});
 
     if(finalCheck){
-      e.currentTarget.reset();
-      currentCashRegister=null;
-      currentCashBookings=[];
-      currentCashMovements=[];
-      cashPendingMovementCount=0;
-      cashQ("#cashClosedState").hidden=false;
-      cashQ("#cashOpenState").hidden=true;
-      await renderCashHistory();
+      setCashUIClosedImmediately(e.currentTarget);
       adminToast("Caixa fechado com sucesso.");
       return;
     }
