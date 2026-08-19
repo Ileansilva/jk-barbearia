@@ -66,3 +66,235 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .owner-footer-link:hover{
   color:#d8bd77;
 }
+
+
+/* ==========================================================
+   V25 — MOBILE RESPONSIVO + EFEITOS PREMIUM LEVES
+   ========================================================== */
+
+/* ===== EVITA TEXTO SOBREPOSTO ===== */
+.form-shell,
+.form-card,
+.booking-settings-info>div,
+.booking-open-box,
+.booking-closed-box,
+.notice,
+.payment-method-card,
+.booking-barber-card,
+.customer-special-card,
+.card,
+.admin-main,
+.table-wrap{
+  min-width:0;
+}
+.booking-title,
+.subtitle,
+.notice,
+.booking-open-box strong,
+.booking-open-box span,
+.booking-closed-box strong,
+.booking-closed-box span,
+.booking-settings-info strong,
+.payment-method-card strong,
+.payment-method-card small,
+.booking-barber-info strong,
+.booking-barber-info small{
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+.notice,
+.booking-open-box,
+.booking-closed-box{
+  line-height:1.55;
+}
+.notice span,
+.notice strong{
+  white-space:normal!important;
+}
+
+/* ===== AGENDAMENTO MOBILE ===== */
+@media(max-width:900px){
+  .form-shell{
+    grid-template-columns:1fr!important;
+    gap:14px!important;
+  }
+  .form-card.sticky{
+    position:static!important;
+    top:auto!important;
+  }
+}
+@media(max-width:680px){
+  .booking-page main.container{
+    width:min(100% - 20px,1200px)!important;
+  }
+  .booking-page .form-card{
+    padding:16px!important;
+    border-radius:16px!important;
+  }
+  .booking-title{
+    font-size:clamp(1.65rem,8vw,2.2rem)!important;
+    line-height:1.05!important;
+  }
+  .booking-settings-info{
+    grid-template-columns:1fr!important;
+  }
+  .booking-settings-info>div{
+    padding:11px!important;
+  }
+  .booking-open-box,
+  .booking-closed-box,
+  .booking-client-notice,
+  .notice{
+    width:100%;
+    padding:12px!important;
+    margin:10px 0!important;
+  }
+  .booking-barber-cards{
+    grid-template-columns:1fr!important;
+  }
+  .booking-barber-card{
+    grid-template-columns:52px minmax(0,1fr) 26px!important;
+    padding:10px!important;
+  }
+  .booking-barber-card img,
+  .booking-barber-placeholder{
+    width:52px!important;
+    height:52px!important;
+    min-width:52px!important;
+  }
+  .payment-method-grid{
+    grid-template-columns:1fr!important;
+  }
+  .payment-method-card{
+    grid-template-columns:42px minmax(0,1fr) 24px!important;
+    min-height:72px!important;
+  }
+  .time-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:7px!important;
+  }
+  .time-btn{
+    min-width:0!important;
+    padding:10px 5px!important;
+    font-size:.78rem!important;
+  }
+  .form-grid{
+    grid-template-columns:1fr!important;
+  }
+  .field{
+    min-width:0!important;
+  }
+}
+@media(max-width:390px){
+  .time-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .booking-barber-card{grid-template-columns:46px minmax(0,1fr) 24px!important}
+  .booking-barber-card img,
+  .booking-barber-placeholder{
+    width:46px!important;height:46px!important;min-width:46px!important
+  }
+}
+
+/* ===== PAINEL MOBILE / TABELAS ===== */
+@media(max-width:720px){
+  .admin-main{padding-left:12px!important;padding-right:12px!important}
+  .admin-top{gap:10px!important}
+  .admin-top-actions{width:100%;display:flex;flex-wrap:wrap}
+  .admin-top-actions .btn{flex:1}
+  .table-wrap{
+    max-width:100%;
+    overflow-x:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .admin-table,.table{min-width:760px}
+}
+
+/* ===== MOVIMENTAÇÃO DE CAIXA EM SINCRONIZAÇÃO ===== */
+.cash-movement-row.is-syncing{
+  opacity:.72;
+  border-style:dashed!important;
+  animation:jkSyncPulse 1.1s ease-in-out infinite;
+}
+
+/* ===== EFEITOS PREMIUM SEM PESAR ===== */
+.public-page .hero-copy,
+.booking-page .form-shell{
+  animation:jkReveal .55s ease both;
+}
+.public-page .hero-card{
+  animation:jkReveal .65s .08s ease both;
+}
+.public-page .service-card,
+.public-page .gallery-card,
+.about-card,
+.card,
+.booking-barber-card,
+.payment-method-card{
+  transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease,background-color .22s ease;
+}
+@media(hover:hover){
+  .public-page .service-card:hover,
+  .public-page .gallery-card:hover,
+  .about-card:hover,
+  .booking-barber-card:hover,
+  .payment-method-card:hover{
+    transform:translateY(-4px);
+    border-color:rgba(214,168,79,.30)!important;
+    box-shadow:0 18px 45px rgba(0,0,0,.24);
+  }
+}
+.btn{
+  position:relative;
+  overflow:hidden;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease!important;
+}
+@media(hover:hover){
+  .btn:hover{transform:translateY(-2px)}
+  .btn-primary:hover{box-shadow:0 12px 30px rgba(214,168,79,.18)}
+}
+.btn-primary:before{
+  content:"";
+  position:absolute;
+  top:-60%;
+  left:-45%;
+  width:30%;
+  height:220%;
+  transform:rotate(20deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.23),transparent);
+  transition:left .55s ease;
+  pointer-events:none;
+}
+@media(hover:hover){
+  .btn-primary:hover:before{left:125%}
+}
+.hero-logo,
+.booking-logo{
+  animation:jkFloat 5s ease-in-out infinite;
+}
+.booking-open-box{
+  box-shadow:0 0 28px rgba(61,190,112,.055),inset 0 0 20px rgba(61,190,112,.025);
+}
+.booking-closed-box{
+  box-shadow:0 0 28px rgba(226,85,85,.04),inset 0 0 20px rgba(226,85,85,.02);
+}
+
+@keyframes jkReveal{
+  from{opacity:0;transform:translateY(14px)}
+  to{opacity:1;transform:none}
+}
+@keyframes jkFloat{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-5px)}
+}
+@keyframes jkSyncPulse{
+  0%,100%{opacity:.62}
+  50%{opacity:.9}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{
+    scroll-behavior:auto!important;
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+  }
+}
