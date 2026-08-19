@@ -528,7 +528,7 @@ async function submitBooking(e){
 
     const protocol=qs("#protocol");
     const success=qs("#successBox");
-    if(protocol)protocol.textContent=data??"Confirmado";
+    if(protocol)protocol.textContent=data??"Enviado";
     if(success){
       success.style.display="block";
       success.scrollIntoView({behavior:"smooth",block:"nearest"});
@@ -542,7 +542,7 @@ async function submitBooking(e){
     if(times)times.innerHTML='<div class="empty" style="grid-column:1/-1">Escolha serviço, barbeiro e data.</div>';
 
     renderSummary();
-    toast("Agendamento realizado com sucesso!","success");
+    toast("Solicitação enviada! Aguarde a confirmação da barbearia.","success");
   }catch(err){
     console.error("JK Booking submit:",err);
     toast(err?.message||"Não foi possível concluir o agendamento.","error");
