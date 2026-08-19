@@ -330,6 +330,29 @@ function updateCashClosePreview(){
     <div class="${diff===0?"ok":diff>0?"positive":"negative"}"><span>Diferença</span><strong>${cashMoney(diff)}</strong></div>`;
 }
 
+
+function cashWait(ms){
+  return new Promise(resolve=>setTimeout(resolve,ms));
+}
+
+async function waitForCashClosed(cashId,{attempts=10,delay=450}={}){
+  for(let i=0;i<attempts;i++){
+    try{
+      const {data,error}=await sb.from("cash_registers")
+        .select("id,status,closed_at,counted_cash,expected_cash,difference_amount")
+        .eq("id",cashId)
+        .maybeSingle();
+
+      if(!error&&data?.status==="fechado")return data;
+    }catch(error){
+      console.warn("JK Caixa: aguardando confirmação do fechamento",error);
+    }
+
+    if(i<attempts-1)await cashWait(delay+(i*80));
+  }
+  return null;
+}
+
 async function closeCashRegister(e){
   e.preventDefault();
   if(!currentCashRegister)return adminToast("Nenhum caixa aberto.",true);
@@ -342,77 +365,114 @@ async function closeCashRegister(e){
   const notes=String(cashQ("#cashCloseNotes")?.value||"").trim();
   const st=cashLiveStats();
   const diff=counted-st.expected;
-  const closingCashId=currentCashRegister.id;
+  const closingCashId=Number(currentCashRegister.id);
 
   if(!Number.isFinite(counted)||counted<0){
     cashUnlock("close");
     countedInput?.focus();
     return adminToast("Informe o dinheiro contado no caixa.",true);
   }
+
   if(Math.abs(diff)>=0.01&&!notes){
     cashUnlock("close");
     cashQ("#cashCloseNotes")?.focus();
     return adminToast("Há diferença no caixa. Informe uma observação antes de fechar.",true);
   }
+
   if(!confirm(`Fechar o caixa?\nEsperado: ${cashMoney(st.expected)}\nContado: ${cashMoney(counted)}\nDiferença: ${cashMoney(diff)}`)){
-    cashUnlock("close");return;
+    cashUnlock("close");
+    return;
   }
 
-  const btn=e.currentTarget.querySelector("button");
+  const btn=e.currentTarget.querySelector('button[type="submit"]')||e.currentTarget.querySelector("button");
   cashSetBusy(btn,true,"Fechando caixa...");
 
   try{
-    const rpc=await sb.rpc("close_cash_register",{p_counted_cash:counted,p_notes:notes});
+    let rpcData=null;
+    let rpcError=null;
 
-    // Mesmo se a resposta RPC vier com falha de rede, verificamos o estado real do banco.
-    const verify=await sb.from("cash_registers")
-      .select("*")
-      .eq("id",closingCashId)
-      .maybeSingle();
+    try{
+      const rpc=await sb.rpc("close_cash_register",{
+        p_counted_cash:counted,
+        p_notes:notes
+      });
+      rpcData=rpc.data;
+      rpcError=rpc.error;
+    }catch(error){
+      rpcError=error;
+    }
 
-    if(verify.error)throw verify.error;
+    let closedRow=null;
 
-    const closedRow=verify.data;
-    if(!closedRow||closedRow.status!=="fechado"){
-      if(rpc.error)throw rpc.error;
-      throw new Error("O caixa não foi confirmado como fechado.");
+    // Se o RPC respondeu sem erro, ainda confirmamos o registro real.
+    // Se houve timeout/falha de rede, aguardamos o Supabase finalizar a transação.
+    if(!rpcError){
+      closedRow=await waitForCashClosed(closingCashId,{attempts:5,delay:250});
+    }else{
+      cashSetBusy(btn,true,"Confirmando fechamento...");
+      closedRow=await waitForCashClosed(closingCashId,{attempts:12,delay:450});
+    }
+
+    if(!closedRow){
+      // Última verificação: pode haver atraso maior em rede móvel/lenta.
+      cashSetBusy(btn,true,"Verificando caixa...");
+      await cashWait(1000);
+      closedRow=await waitForCashClosed(closingCashId,{attempts:5,delay:500});
+    }
+
+    if(!closedRow){
+      // Só agora mostramos erro, depois de várias confirmações.
+      if(rpcError)throw rpcError;
+      throw new Error("Não foi possível confirmar o fechamento do caixa.");
     }
 
     e.currentTarget.reset();
     currentCashRegister=null;
     currentCashBookings=[];
     currentCashMovements=[];
+    cashPendingMovementCount=0;
+
     cashQ("#cashClosedState").hidden=false;
     cashQ("#cashOpenState").hidden=true;
 
     await renderCashHistory();
-    adminToast("Caixa fechado e conferido com sucesso.");
 
-    // Destaca o histórico para o proprietário ver imediatamente as ações.
-    cashQ("#cashHistoryRows")?.closest(".cash-history-card")?.scrollIntoView({behavior:"smooth",block:"start"});
+    const expected=Number(closedRow.expected_cash??st.expected);
+    const actual=Number(closedRow.counted_cash??counted);
+    const realDiff=Number(closedRow.difference_amount??(actual-expected));
+
+    adminToast(
+      Math.abs(realDiff)<0.01
+        ?"Caixa fechado e conferido com sucesso."
+        :`Caixa fechado. Diferença registrada: ${cashMoney(realDiff)}.`
+    );
+
+    setTimeout(()=>{
+      cashQ("#cashHistoryRows")?.closest(".cash-history-card")
+        ?.scrollIntoView({behavior:"smooth",block:"start"});
+    },100);
+
   }catch(error){
-    // Última confirmação: evita falso erro se o banco fechou entre a falha e esta consulta.
-    try{
-      const fallback=await sb.from("cash_registers")
-        .select("status")
-        .eq("id",closingCashId)
-        .maybeSingle();
-
-      if(fallback.data?.status==="fechado"){
-        e.currentTarget.reset();
-        currentCashRegister=null;
-        currentCashBookings=[];
-        currentCashMovements=[];
-        cashQ("#cashClosedState").hidden=false;
-        cashQ("#cashOpenState").hidden=true;
-        await renderCashHistory();
-        adminToast("Caixa fechado com sucesso.");
-        return;
-      }
-    }catch(_){}
-
     console.error("JK Caixa closeCashRegister:",error);
-    adminToast("Erro ao fechar caixa: "+(error?.message||error),true);
+
+    // Se ainda assim ocorreu exceção na interface, fazemos uma última
+    // confirmação antes de permitir qualquer mensagem de erro.
+    const finalCheck=await waitForCashClosed(closingCashId,{attempts:4,delay:600});
+
+    if(finalCheck){
+      e.currentTarget.reset();
+      currentCashRegister=null;
+      currentCashBookings=[];
+      currentCashMovements=[];
+      cashPendingMovementCount=0;
+      cashQ("#cashClosedState").hidden=false;
+      cashQ("#cashOpenState").hidden=true;
+      await renderCashHistory();
+      adminToast("Caixa fechado com sucesso.");
+      return;
+    }
+
+    adminToast("Não foi possível fechar o caixa. O caixa continua aberto.",true);
   }finally{
     cashSetBusy(btn,false);
     cashUnlock("close");
