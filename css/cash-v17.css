@@ -59,3 +59,34 @@ JK BARBEARIA - CAIXA V17
 
 
 .cash-close-preview .waiting strong{color:#d7c58d;font-size:.72rem}
+
+
+/* ===== CAIXA SEGURO V29 ===== */
+.cash-movement-row{
+  grid-template-columns:34px minmax(0,1fr) auto auto!important;
+}
+.cash-movement-value{min-width:92px;text-align:right}
+.cash-movement-delete-btn{
+  color:#ffabab!important;
+  border-color:rgba(226,85,85,.22)!important;
+  background:rgba(226,85,85,.055)!important;
+}
+.cash-movement-delete-btn:hover{
+  border-color:rgba(226,85,85,.48)!important;
+  background:rgba(226,85,85,.10)!important;
+}
+.cash-delete-btn{
+  color:#ffb0b0!important;
+  border-color:rgba(226,85,85,.30)!important;
+  background:rgba(226,85,85,.075)!important;
+  font-weight:850!important;
+}
+.cash-history-actions{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:680px){
+  .cash-movement-row{
+    grid-template-columns:32px minmax(0,1fr) auto!important;
+    align-items:center!important;
+  }
+  .cash-movement-value{grid-column:2;text-align:left}
+  .cash-movement-delete-btn{grid-column:3;grid-row:1 / span 2}
+}
