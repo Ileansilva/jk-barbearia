@@ -367,3 +367,14 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   .owner-protected-actions{flex-direction:column-reverse}
   .owner-protected-actions .btn{width:100%}
 }
+
+
+/* ===== HISTÓRICO DO CAIXA V29 ===== */
+.cash-history-card .table th:last-child,
+.cash-history-card .table td:last-child{
+  position:sticky;
+  right:0;
+  z-index:2;
+  background:#101315;
+}
+.cash-history-card .table th:last-child{z-index:3}
