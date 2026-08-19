@@ -166,7 +166,8 @@ function renderCashMovements(){
     <div class="cash-movement-row ${m.movement_type} ${m._optimistic?"is-syncing":""}">
       <span class="cash-movement-sign">${["entrada","suprimento"].includes(m.movement_type)?"+":"−"}</span>
       <span><strong>${labels[m.movement_type]||m.movement_type}</strong><small>${JK.esc(m.description)}${m._optimistic?" · sincronizando...":""}</small></span>
-      <span><strong>${cashMoney(m.amount)}</strong><small>${new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</small></span>
+      <span class="cash-movement-value"><strong>${cashMoney(m.amount)}</strong><small>${new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</small></span>
+      ${m._optimistic?"":`<button type="button" class="mini-btn cash-movement-delete-btn" onclick="deleteCashMovement(${m.id},this)">Excluir</button>`}
     </div>`).join("");
 }
 
@@ -251,6 +252,57 @@ async function addCashMovement(e){
   }
 }
 
+
+async function deleteCashMovement(id,button=null){
+  if(!currentCashRegister)return adminToast("Só é possível excluir movimentações de um caixa aberto.",true);
+  const movement=currentCashMovements.find(m=>Number(m.id)===Number(id));
+  if(!movement)return adminToast("Movimentação não encontrada.",true);
+  if(movement._optimistic)return adminToast("Aguarde a movimentação terminar de sincronizar.",true);
+
+  if(!window.ownerProtectedAction){
+    return adminToast("Proteção do proprietário ainda não carregou. Atualize a página.",true);
+  }
+
+  const labels={entrada:"Entrada",saida:"Saída",sangria:"Sangria",suprimento:"Suprimento"};
+  await window.ownerProtectedAction({
+    title:"Excluir movimentação do caixa",
+    description:`Excluir ${labels[movement.movement_type]||"movimentação"} de ${cashMoney(movement.amount)} — ${movement.description}. Informe e-mail e senha do proprietário.`,
+    confirmText:"Excluir movimentação",
+    action:async()=>{
+      const key=`deleteMovement:${id}`;
+      if(!cashLock(key))return;
+      cashSetBusy(button,true,"Excluindo...");
+      try{
+        // Confirma que ainda pertence ao caixa atualmente aberto.
+        const {data:latest,error:loadError}=await sb.from("cash_movements")
+          .select("id,cash_register_id")
+          .eq("id",id)
+          .maybeSingle();
+        if(loadError)throw loadError;
+        if(!latest)throw new Error("Essa movimentação já foi excluída.");
+        if(Number(latest.cash_register_id)!==Number(currentCashRegister.id)){
+          throw new Error("Essa movimentação não pertence ao caixa aberto.");
+        }
+
+        const {error}=await sb.from("cash_movements").delete()
+          .eq("id",id)
+          .eq("cash_register_id",currentCashRegister.id);
+        if(error)throw error;
+
+        currentCashMovements=currentCashMovements.filter(m=>Number(m.id)!==Number(id));
+        renderOpenCashNumbers();
+        renderCashMovements();
+        adminToast("Movimentação excluída e valores do caixa recalculados.");
+      }catch(error){
+        adminToast("Erro ao excluir movimentação: "+(error?.message||error),true);
+      }finally{
+        cashSetBusy(button,false);
+        cashUnlock(key);
+      }
+    }
+  });
+}
+
 function updateCashClosePreview(){
   const box=cashQ("#cashClosePreview");
   if(!box||!currentCashRegister)return;
@@ -283,30 +335,88 @@ async function closeCashRegister(e){
   if(!currentCashRegister)return adminToast("Nenhum caixa aberto.",true);
   if(cashPendingMovementCount>0)return adminToast("Aguarde a movimentação terminar de sincronizar antes de fechar o caixa.",true);
   if(!cashLock("close"))return;
-  const counted=Number(cashQ("#cashCountedAmount").value);
-  const notes=String(cashQ("#cashCloseNotes").value||"").trim();
-  const st=cashLiveStats(),diff=counted-st.expected;
 
-  if(!Number.isFinite(counted)||counted<0){cashUnlock("close");return adminToast("Informe o dinheiro contado.",true);}
-  if(Math.abs(diff)>=0.01&&!notes){
-    cashUnlock("close"); return adminToast("Há diferença no caixa. Informe uma observação antes de fechar.",true);
+  const countedInput=cashQ("#cashCountedAmount");
+  const rawCounted=String(countedInput?.value??"").trim();
+  const counted=rawCounted===""?NaN:Number(rawCounted);
+  const notes=String(cashQ("#cashCloseNotes")?.value||"").trim();
+  const st=cashLiveStats();
+  const diff=counted-st.expected;
+  const closingCashId=currentCashRegister.id;
+
+  if(!Number.isFinite(counted)||counted<0){
+    cashUnlock("close");
+    countedInput?.focus();
+    return adminToast("Informe o dinheiro contado no caixa.",true);
   }
-  if(!confirm(`Fechar o caixa?\nEsperado: ${cashMoney(st.expected)}\nContado: ${cashMoney(counted)}\nDiferença: ${cashMoney(diff)}`)){cashUnlock("close");return;}
+  if(Math.abs(diff)>=0.01&&!notes){
+    cashUnlock("close");
+    cashQ("#cashCloseNotes")?.focus();
+    return adminToast("Há diferença no caixa. Informe uma observação antes de fechar.",true);
+  }
+  if(!confirm(`Fechar o caixa?\nEsperado: ${cashMoney(st.expected)}\nContado: ${cashMoney(counted)}\nDiferença: ${cashMoney(diff)}`)){
+    cashUnlock("close");return;
+  }
 
   const btn=e.currentTarget.querySelector("button");
   cashSetBusy(btn,true,"Fechando caixa...");
+
   try{
-    const {error}=await sb.rpc("close_cash_register",{p_counted_cash:counted,p_notes:notes});
-    if(error)throw error;
-    adminToast("Caixa fechado e conferido.");
+    const rpc=await sb.rpc("close_cash_register",{p_counted_cash:counted,p_notes:notes});
+
+    // Mesmo se a resposta RPC vier com falha de rede, verificamos o estado real do banco.
+    const verify=await sb.from("cash_registers")
+      .select("*")
+      .eq("id",closingCashId)
+      .maybeSingle();
+
+    if(verify.error)throw verify.error;
+
+    const closedRow=verify.data;
+    if(!closedRow||closedRow.status!=="fechado"){
+      if(rpc.error)throw rpc.error;
+      throw new Error("O caixa não foi confirmado como fechado.");
+    }
+
     e.currentTarget.reset();
-    currentCashRegister=null;currentCashBookings=[];currentCashMovements=[];
+    currentCashRegister=null;
+    currentCashBookings=[];
+    currentCashMovements=[];
     cashQ("#cashClosedState").hidden=false;
     cashQ("#cashOpenState").hidden=true;
+
     await renderCashHistory();
+    adminToast("Caixa fechado e conferido com sucesso.");
+
+    // Destaca o histórico para o proprietário ver imediatamente as ações.
+    cashQ("#cashHistoryRows")?.closest(".cash-history-card")?.scrollIntoView({behavior:"smooth",block:"start"});
   }catch(error){
+    // Última confirmação: evita falso erro se o banco fechou entre a falha e esta consulta.
+    try{
+      const fallback=await sb.from("cash_registers")
+        .select("status")
+        .eq("id",closingCashId)
+        .maybeSingle();
+
+      if(fallback.data?.status==="fechado"){
+        e.currentTarget.reset();
+        currentCashRegister=null;
+        currentCashBookings=[];
+        currentCashMovements=[];
+        cashQ("#cashClosedState").hidden=false;
+        cashQ("#cashOpenState").hidden=true;
+        await renderCashHistory();
+        adminToast("Caixa fechado com sucesso.");
+        return;
+      }
+    }catch(_){}
+
+    console.error("JK Caixa closeCashRegister:",error);
     adminToast("Erro ao fechar caixa: "+(error?.message||error),true);
-  }finally{cashSetBusy(btn,false);cashUnlock("close");}
+  }finally{
+    cashSetBusy(btn,false);
+    cashUnlock("close");
+  }
 }
 
 async function renderCashHistory(){
@@ -331,7 +441,7 @@ async function renderCashHistory(){
       <td class="${diff<0?"cash-diff-negative":diff>0?"cash-diff-positive":""}"><strong>${r.status==="fechado"?cashMoney(diff):"—"}</strong></td>
       <td><div class="cash-history-actions">
         <button class="mini-btn" type="button" onclick="showCashHistoryDetail(${r.id})">Detalhes</button>
-        ${r.status==="fechado"?`<button class="mini-btn cash-delete-btn" type="button" onclick="openDeleteCashModal(${r.id})">Excluir</button>`:""}
+        ${r.status==="fechado"?`<button class="mini-btn cash-delete-btn" type="button" onclick="openDeleteCashModal(${r.id})">Excluir caixa</button>`:""}
       </div></td>
     </tr>`;
   }).join("");
