@@ -308,3 +308,62 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .booking-closed-box span{
   display:block;
 }
+
+
+/* ==========================================================
+   V28 — PENDENTE / WHATSAPP / PROTEÇÃO DO PROPRIETÁRIO
+   ========================================================== */
+.status.pendente{
+  color:#f3ca70!important;
+  background:rgba(214,168,79,.09)!important;
+  border-color:rgba(214,168,79,.24)!important;
+}
+.owner-protected-modal{
+  position:fixed;
+  inset:0;
+  z-index:200000;
+  display:grid;
+  place-items:center;
+  padding:18px;
+}
+.owner-protected-modal[hidden]{display:none!important}
+.owner-protected-backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.78);
+  backdrop-filter:blur(6px);
+}
+.owner-protected-card{
+  position:relative;
+  z-index:1;
+  width:min(470px,100%);
+  padding:22px;
+  border-radius:20px;
+  border:1px solid rgba(214,168,79,.26);
+  background:linear-gradient(145deg,#17191b,#0d0f10);
+  box-shadow:0 30px 90px rgba(0,0,0,.62);
+}
+.owner-protected-card h2{margin:5px 0 7px;color:#fff5d7}
+.owner-protected-close{
+  position:absolute;right:14px;top:12px;
+  width:34px;height:34px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.03);
+  color:#e9ddc1;font-size:1.25rem;cursor:pointer;
+}
+.owner-protected-error{
+  grid-column:1/-1;
+  min-height:20px;
+  color:#ff9c9c;
+  font-size:.76rem;
+}
+.owner-protected-actions{
+  display:flex!important;
+  gap:9px;
+  justify-content:flex-end;
+}
+@media(max-width:520px){
+  .owner-protected-card{padding:18px}
+  .owner-protected-actions{flex-direction:column-reverse}
+  .owner-protected-actions .btn{width:100%}
+}
