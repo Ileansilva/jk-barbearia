@@ -378,3 +378,109 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   background:#101315;
 }
 .cash-history-card .table th:last-child{z-index:3}
+
+
+/* ==========================================================
+   V35 — USO DO SISTEMA
+   ========================================================== */
+.system-usage-section{overflow:hidden}
+.system-usage-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  margin-top:16px;
+}
+.system-usage-card{
+  padding:16px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:16px;
+  background:linear-gradient(145deg,rgba(255,255,255,.028),rgba(255,255,255,.008));
+}
+.system-usage-card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.system-usage-card-head span{
+  display:block;
+  color:#9aa1a8;
+  font-size:.76rem;
+}
+.system-usage-card-head strong{
+  display:block;
+  margin-top:5px;
+  color:#f7f1e6;
+  font-size:1.15rem;
+}
+.system-usage-percent{
+  color:#d8bd77!important;
+  font-weight:850;
+  white-space:nowrap;
+}
+.system-usage-progress{
+  height:10px;
+  margin:14px 0 9px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(255,255,255,.065);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.35);
+}
+.system-usage-progress-bar{
+  width:0;
+  height:100%;
+  border-radius:999px;
+  transition:width .45s ease;
+  background:linear-gradient(90deg,#5a9d74,#7cc99a);
+}
+.system-usage-progress-bar[data-level="warning"]{
+  background:linear-gradient(90deg,#bd8d35,#e6bb62);
+}
+.system-usage-progress-bar[data-level="danger"]{
+  background:linear-gradient(90deg,#a94242,#ea6c6c);
+}
+.system-usage-card small{color:#8e969c}
+.system-usage-counters{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.system-usage-counters article{
+  padding:13px 15px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.06);
+  background:rgba(255,255,255,.018);
+}
+.system-usage-counters span{
+  display:block;
+  color:#92999f;
+  font-size:.72rem;
+}
+.system-usage-counters strong{
+  display:block;
+  margin-top:4px;
+  color:#f4e8cb;
+  font-size:1.2rem;
+}
+.system-usage-warning{
+  margin-top:12px;
+  padding:12px 14px;
+  border-radius:12px;
+  font-size:.78rem;
+  font-weight:700;
+}
+.system-usage-warning[data-level="warning"]{
+  color:#f3d28b;
+  border:1px solid rgba(218,170,76,.24);
+  background:rgba(218,170,76,.07);
+}
+.system-usage-warning[data-level="danger"]{
+  color:#ffb0b0;
+  border:1px solid rgba(226,85,85,.25);
+  background:rgba(226,85,85,.075);
+}
+@media(max-width:760px){
+  .system-usage-grid{grid-template-columns:1fr}
+  .system-usage-counters{grid-template-columns:1fr}
+}
