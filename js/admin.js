@@ -1684,3 +1684,99 @@ function renderBlockedDateChips(){
     btn.addEventListener("click",()=>removeBlockedDate(btn.dataset.date));
   });
 }
+
+
+// ===== USO DO SISTEMA V35 =====
+function formatSystemBytes(bytes){
+  const value=Number(bytes||0);
+  if(value<1024)return `${value} B`;
+  if(value<1024**2)return `${(value/1024).toFixed(1)} KB`;
+  if(value<1024**3)return `${(value/1024**2).toFixed(1)} MB`;
+  return `${(value/1024**3).toFixed(2)} GB`;
+}
+
+function systemUsageLevel(percent){
+  if(percent>=90)return "danger";
+  if(percent>=70)return "warning";
+  return "ok";
+}
+
+function updateSystemUsageBar(bar,percent){
+  if(!bar)return;
+  const safe=Math.max(0,Math.min(100,Number(percent||0)));
+  bar.style.width=`${safe}%`;
+  bar.dataset.level=systemUsageLevel(safe);
+}
+
+async function loadSystemUsage(button=null){
+  const dbText=$("#systemDatabaseUsage");
+  if(!dbText)return;
+
+  const original=button?.textContent;
+  if(button){
+    button.disabled=true;
+    button.textContent="Atualizando...";
+  }
+
+  try{
+    const {data,error}=await sb.rpc("get_system_usage_stats");
+    if(error)throw error;
+
+    const usage=data||{};
+    const dbUsed=Number(usage.database_bytes||0);
+    const dbLimit=Number(usage.database_limit_bytes||524288000);
+    const storageUsed=Number(usage.storage_bytes||0);
+    const storageLimit=Number(usage.storage_limit_bytes||1073741824);
+
+    const dbPercent=dbLimit?dbUsed/dbLimit*100:0;
+    const storagePercent=storageLimit?storageUsed/storageLimit*100:0;
+
+    $("#systemDatabaseUsage").textContent=`${formatSystemBytes(dbUsed)} / ${formatSystemBytes(dbLimit)}`;
+    $("#systemDatabasePercent").textContent=`${dbPercent.toFixed(1)}%`;
+    $("#systemDatabaseRemaining").textContent=`Livre: ${formatSystemBytes(Math.max(0,dbLimit-dbUsed))}`;
+
+    $("#systemStorageUsage").textContent=`${formatSystemBytes(storageUsed)} / ${formatSystemBytes(storageLimit)}`;
+    $("#systemStoragePercent").textContent=`${storagePercent.toFixed(1)}%`;
+    $("#systemStorageRemaining").textContent=`Livre: ${formatSystemBytes(Math.max(0,storageLimit-storageUsed))}`;
+
+    $("#systemCustomersCount").textContent=Number(usage.customers_count||0).toLocaleString("pt-BR");
+    $("#systemBookingsCount").textContent=Number(usage.bookings_count||0).toLocaleString("pt-BR");
+    $("#systemStorageFiles").textContent=Number(usage.storage_files||0).toLocaleString("pt-BR");
+
+    updateSystemUsageBar($("#systemDatabaseBar"),dbPercent);
+    updateSystemUsageBar($("#systemStorageBar"),storagePercent);
+
+    const warning=$("#systemUsageWarning");
+    const maxPercent=Math.max(dbPercent,storagePercent);
+    if(warning){
+      if(maxPercent>=90){
+        warning.hidden=false;
+        warning.dataset.level="danger";
+        warning.textContent="Atenção: um dos limites está acima de 90%. É recomendável liberar espaço ou avaliar um plano maior.";
+      }else if(maxPercent>=70){
+        warning.hidden=false;
+        warning.dataset.level="warning";
+        warning.textContent="Atenção: um dos recursos já passou de 70% do limite disponível.";
+      }else{
+        warning.hidden=true;
+        warning.textContent="";
+      }
+    }
+  }catch(error){
+    console.error("JK System Usage:",error);
+    $("#systemDatabaseUsage").textContent="Não foi possível carregar";
+    $("#systemStorageUsage").textContent="Não foi possível carregar";
+    adminToast("Erro ao consultar uso do sistema: "+(error?.message||error),true);
+  }finally{
+    if(button){
+      button.disabled=false;
+      button.textContent=original||"Atualizar uso";
+    }
+  }
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  if(document.body?.dataset?.adminPage!=="settings")return;
+  $("#refreshSystemUsageBtn")?.addEventListener("click",e=>loadSystemUsage(e.currentTarget));
+  loadSystemUsage();
+});
