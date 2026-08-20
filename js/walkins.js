@@ -128,65 +128,148 @@ async function ensureWalkinCustomer(name,phone,selectedId){
 
 async function saveWalkin(e){
   e.preventDefault();
-  const mode=wq("#walkinMode").value;
-  const name=String(wq("#walkinName").value||"").trim(),phone=String(wq("#walkinPhone").value||"").trim();
-  const serviceId=Number(wq("#walkinService").value),barberId=Number(wq("#walkinBarber").value);
-  const payment=wq("#walkinPayment").value,notes=String(wq("#walkinNotes").value||"").trim();
-  const selectedCustomer=Number(wq("#walkinCustomer").value||0);
-  if(name.length<2||phoneDigits(phone).length<8)return adminToast("Informe nome e WhatsApp do cliente.",true);
-  if(!serviceId||!barberId)return adminToast("Escolha o serviço e o barbeiro.",true);
-  const service=walkinServices.find(x=>Number(x.id)===serviceId),barber=walkinBarbers.find(x=>Number(x.id)===barberId);
-  if(!service||!barber)return adminToast("Serviço ou barbeiro inválido.",true);
 
-  const btn=e.currentTarget.querySelector("button[type=submit]");
-  if(btn){btn.disabled=true;btn.textContent="Salvando...";}
+  const form=e.currentTarget;
+  const mode=wq("#walkinMode").value;
+  const name=String(wq("#walkinName").value||"").trim();
+  const phone=String(wq("#walkinPhone").value||"").trim();
+  const serviceId=Number(wq("#walkinService").value);
+  const barberId=Number(wq("#walkinBarber").value);
+  const payment=wq("#walkinPayment").value;
+  const notes=String(wq("#walkinNotes").value||"").trim();
+  const selectedCustomer=Number(wq("#walkinCustomer").value||0);
+
+  if(name.length<2||phoneDigits(phone).length<8){
+    return adminToast("Informe nome e WhatsApp do cliente.",true);
+  }
+  if(!serviceId||!barberId){
+    return adminToast("Escolha o serviço e o barbeiro.",true);
+  }
+
+  const service=walkinServices.find(x=>Number(x.id)===serviceId);
+  const barber=walkinBarbers.find(x=>Number(x.id)===barberId);
+  if(!service||!barber){
+    return adminToast("Serviço ou barbeiro inválido.",true);
+  }
+
+  const btn=form.querySelector('button[type="submit"]');
+  walkinBusy(btn,true,"Salvando...");
+
+  let committed=false;
+
   try{
     const customerId=await ensureWalkinCustomer(name,phone,selectedCustomer);
+
     if(mode==="fila"){
-      const {error}=await sb.from("walk_in_queue").insert({
-        jk_customer_id:customerId,client_name:name,phone,service_id:service.id,service_name:service.name,
-        price:service.price,duration_minutes:service.duration_minutes,barber_id:barber.id,barber_name:barber.name,
-        payment_method:payment,notes
-      });
-      if(error)throw error;
+      const insert=await sb.from("walk_in_queue").insert({
+        jk_customer_id:customerId,
+        client_name:name,
+        phone,
+        service_id:service.id,
+        service_name:service.name,
+        price:service.price,
+        duration_minutes:service.duration_minutes,
+        barber_id:barber.id,
+        barber_name:barber.name,
+        payment_method:payment,
+        notes
+      }).select("*").single();
+
+      if(insert.error)throw insert.error;
+      if(!insert.data?.id)throw new Error("Não foi possível confirmar a entrada na fila.");
+
+      committed=true;
+
+      // Atualização visual instantânea: não espera uma nova consulta.
+      const row=insert.data;
+      walkinQueue=[...walkinQueue.filter(x=>Number(x.id)!==Number(row.id)),row]
+        .sort((a,b)=>new Date(a.arrived_at)-new Date(b.arrived_at));
+
+      renderWalkinQueueFromCurrentState();
+
       adminToast("Cliente adicionado à fila presencial.");
     }else{
-      const date=wq("#walkinDate").value,time=wq("#walkinTime").value;
+      const date=wq("#walkinDate").value;
+      const time=wq("#walkinTime").value;
+
       if(!date||!time)throw new Error("Informe data e horário do encaixe.");
-      const {data:bookingId,error}=await sb.rpc("create_admin_walkin_booking",{
-        p_client_name:name,p_phone:phone,p_service_id:serviceId,p_barber_id:barberId,
-        p_booking_date:date,p_booking_time:time,p_payment_method:payment,p_notes:notes,
-        p_origin:"encaixe",p_customer_id:customerId
+
+      const result=await sb.rpc("create_admin_walkin_booking",{
+        p_client_name:name,
+        p_phone:phone,
+        p_service_id:serviceId,
+        p_barber_id:barberId,
+        p_booking_date:date,
+        p_booking_time:time,
+        p_payment_method:payment,
+        p_notes:notes,
+        p_origin:"encaixe",
+        p_customer_id:customerId
       });
-      if(error)throw error;
-      if(!bookingId)throw new Error("O encaixe não retornou confirmação do banco.");
+
+      if(result.error)throw result.error;
+      if(!result.data)throw new Error("O encaixe não retornou confirmação do banco.");
+
+      committed=true;
       adminToast("Encaixe presencial criado e confirmado.");
     }
-    e.currentTarget.reset();wq("#walkinCustomer").value="";setWalkinNow();syncWalkinMode();
-    wq("#walkinFormCard").hidden=true;
-    await renderWalkinQueue();
-    await renderBookings();
+
+    // A partir daqui a operação JÁ FOI SALVA.
+    // Falha ao redesenhar a página não pode virar mensagem de erro do cadastro.
+    form.reset();
+    if(wq("#walkinCustomer"))wq("#walkinCustomer").value="";
+    setWalkinNow();
+    syncWalkinMode();
+    if(wq("#walkinFormCard"))wq("#walkinFormCard").hidden=true;
+
+    Promise.allSettled([
+      renderWalkinQueue(),
+      typeof renderBookings==="function"?renderBookings():Promise.resolve()
+    ]).then(results=>{
+      results.forEach(result=>{
+        if(result.status==="rejected"){
+          console.warn("JK Walkin: falha de atualização visual após salvar",result.reason);
+        }
+      });
+    });
+
   }catch(err){
     console.error("JK Walkin save:",err);
-    const msg=String(err?.message||"Erro ao adicionar atendimento.");
-    adminToast(msg,true);
+
+    if(committed){
+      // Segurança: nunca informar erro se o banco já confirmou o salvamento.
+      adminToast(
+        mode==="fila"
+          ?"Cliente salvo na fila. Atualizando a tela..."
+          :"Encaixe salvo. Atualizando a tela..."
+      );
+      return;
+    }
+
+    adminToast(err?.message||"Erro ao adicionar atendimento.",true);
+  }finally{
+    walkinBusy(btn,false);
   }
-  finally{if(btn){btn.disabled=false;btn.textContent="Adicionar atendimento";}}
 }
 
-async function renderWalkinQueue(){
-  const root=wq("#walkinQueueList");if(!root)return;
-  const p=localParts();
-  const start=`${p.date}T00:00:00-03:00`,end=`${p.date}T23:59:59-03:00`;
-  const {data,error}=await sb.from("walk_in_queue").select("*").gte("arrived_at",start).lte("arrived_at",end).in("queue_status",["aguardando","atendendo"]).order("arrived_at");
-  if(error){root.innerHTML='<div class="empty">Erro ao carregar a fila.</div>';return;}
-  walkinQueue=data||[];
-  const waiting=walkinQueue.filter(x=>x.queue_status==="aguardando").length;
-  if(wq("#walkinQueueCount"))wq("#walkinQueueCount").textContent=`${waiting} aguardando`;
-  if(!walkinQueue.length){root.innerHTML='<div class="empty">Nenhum cliente aguardando ou em atendimento.</div>';return;}
+
+function renderWalkinQueueFromCurrentState(){
+  const root=wq("#walkinQueueList");
+  if(!root)return;
+
+  const waitingCount=walkinQueue.filter(x=>x.queue_status==="aguardando").length;
+  if(wq("#walkinQueueCount"))wq("#walkinQueueCount").textContent=`${waitingCount} aguardando`;
+
+  if(!walkinQueue.length){
+    root.innerHTML='<div class="empty">Nenhum cliente aguardando ou em atendimento.</div>';
+    return;
+  }
+
   let pos=0;
   root.innerHTML=walkinQueue.map(q=>{
-    const waiting=q.queue_status==="aguardando";if(waiting)pos++;
+    const waiting=q.queue_status==="aguardando";
+    if(waiting)pos++;
+
     return `<article class="walkin-queue-item ${q.queue_status}">
       <div class="walkin-position">${waiting?pos:"✂"}</div>
       <div class="walkin-person">
@@ -196,11 +279,23 @@ async function renderWalkinQueue(){
         <small>Chegou ${new Date(q.arrived_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</small>
       </div>
       <div class="walkin-actions">
-        ${waiting?`<button class="btn btn-primary" type="button" onclick="startWalkinQueue(${q.id},this)">Iniciar</button>`:`<button class="btn btn-primary" type="button" onclick="finishWalkinQueue(${q.id},${q.booking_id},this)">Concluir</button>`}
+        ${waiting
+          ?`<button class="btn btn-primary" type="button" onclick="startWalkinQueue(${q.id},this)">Iniciar</button>`
+          :`<button class="btn btn-primary" type="button" onclick="finishWalkinQueue(${q.id},${q.booking_id},this)">Concluir</button>`}
         <button class="mini-btn danger-mini" type="button" onclick="cancelWalkinQueue(${q.id},this)">Cancelar</button>
       </div>
     </article>`;
   }).join("");
+}
+
+async function renderWalkinQueue(){
+  const root=wq("#walkinQueueList");if(!root)return;
+  const p=localParts();
+  const start=`${p.date}T00:00:00-03:00`,end=`${p.date}T23:59:59-03:00`;
+  const {data,error}=await sb.from("walk_in_queue").select("*").gte("arrived_at",start).lte("arrived_at",end).in("queue_status",["aguardando","atendendo"]).order("arrived_at");
+  if(error){root.innerHTML='<div class="empty">Erro ao carregar a fila.</div>';return;}
+  walkinQueue=data||[];
+  renderWalkinQueueFromCurrentState();
 }
 
 async function startWalkinQueue(id,btn=null){
