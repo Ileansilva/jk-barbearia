@@ -167,6 +167,46 @@
       </div>
     </section>
 
+
+    <section class="settings-section card system-usage-section">
+      <div class="settings-section-head">
+        <div>
+          <span class="settings-step">07</span>
+          <h3>Uso do sistema</h3>
+          <p class="muted">Acompanhe o consumo real do banco de dados e das imagens armazenadas no Supabase.</p>
+        </div>
+        <button id="refreshSystemUsageBtn" class="btn btn-outline" type="button">Atualizar uso</button>
+      </div>
+
+      <div class="system-usage-grid">
+        <article class="system-usage-card">
+          <div class="system-usage-card-head">
+            <div><span>Banco de dados</span><strong id="systemDatabaseUsage">Carregando...</strong></div>
+            <span id="systemDatabasePercent" class="system-usage-percent">0%</span>
+          </div>
+          <div class="system-usage-progress"><div id="systemDatabaseBar" class="system-usage-progress-bar"></div></div>
+          <small id="systemDatabaseRemaining">Calculando espaço disponível...</small>
+        </article>
+
+        <article class="system-usage-card">
+          <div class="system-usage-card-head">
+            <div><span>Imagens / Storage</span><strong id="systemStorageUsage">Carregando...</strong></div>
+            <span id="systemStoragePercent" class="system-usage-percent">0%</span>
+          </div>
+          <div class="system-usage-progress"><div id="systemStorageBar" class="system-usage-progress-bar"></div></div>
+          <small id="systemStorageRemaining">Calculando espaço disponível...</small>
+        </article>
+      </div>
+
+      <div class="system-usage-counters">
+        <article><span>Clientes cadastrados</span><strong id="systemCustomersCount">—</strong></article>
+        <article><span>Agendamentos salvos</span><strong id="systemBookingsCount">—</strong></article>
+        <article><span>Arquivos no Storage</span><strong id="systemStorageFiles">—</strong></article>
+      </div>
+
+      <div id="systemUsageWarning" class="system-usage-warning" hidden></div>
+    </section>
+
     <div class="settings-save-bar">
       <div>
         <strong>Alterações na agenda</strong>
