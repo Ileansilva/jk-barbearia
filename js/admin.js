@@ -20,7 +20,7 @@ e dados da empresa pelo painel de Configurações.
 ==========================================================
 */
 
-let session=null, services=[], barbers=[], galleryItems=[], financeBookings=[], currentProfileBarberId=null;
+let session=null, services=[], barbers=[], galleryItems=[], financeBookings=[], currentProfileBarberId=null, profileBarberBookings=[];
 let bookingRealtimeChannel=null;
 let bookingMessageSettingsCache=null;
 let bookingAlarmTimer=null;
@@ -85,6 +85,12 @@ document.addEventListener("DOMContentLoaded",async()=>{
   $("#barberPhotoFile")?.addEventListener("change",previewBarberPhoto);
   $("#profileDate")?.addEventListener("change",()=>renderBarberProfileDay());
   $("#profileTodayBtn")?.addEventListener("click",()=>{const d=$("#profileDate"); if(d){d.value=localDateISO(); renderBarberProfileDay();}});
+  $("#profileHistoryMode")?.addEventListener("change",()=>{syncProfileHistoryFields();renderBarberClientHistory();});
+  $("#profileHistoryDay")?.addEventListener("change",()=>renderBarberClientHistory());
+  $("#profileHistoryMonth")?.addEventListener("change",()=>renderBarberClientHistory());
+  $("#profileHistoryYear")?.addEventListener("change",()=>renderBarberClientHistory());
+  $("#profileHistoryFrom")?.addEventListener("change",()=>renderBarberClientHistory());
+  $("#profileHistoryTo")?.addEventListener("change",()=>renderBarberClientHistory());
 
   const {data,error}=await sb.auth.getSession();
   if(error)console.error(error);
@@ -380,7 +386,10 @@ async function renderCurrentPage(){
     barbers=[br.data];
     fillBarberProfileHeader(br.data);
     const d=$("#profileDate");if(d&&!d.value)d.value=localDateISO();
-    await renderBarberProfileDay();
+    initializeBarberHistoryFilters();
+    profileBarberBookings=await loadProfileBookings();
+    await renderBarberProfileDay(profileBarberBookings);
+    renderBarberClientHistory(profileBarberBookings);
     return;
   }
   const tasks={dashboard:renderKPIs,appointments:renderBookings,customers:window.renderCustomersAdmin,services:renderServicesAdmin,barbers:renderBarbersAdmin,finance:renderFinance,cash:window.renderCashAdmin,gallery:renderGalleryAdmin,settings:loadSettings};
@@ -1008,18 +1017,19 @@ function openBarberProfile(id){location.href=`barbeiro-perfil.html?id=${encodeUR
 async function loadProfileBookings(){
   if(!currentProfileBarberId)return [];
   const {data,error}=await sb.from("bookings")
-    .select("id,client_name,booking_date,booking_time,completed_at,service_name,price,status,barber_id,barber_name,barber_commission_percent,barber_commission_amount,payment_method")
+    .select("id,client_name,phone,jk_customer_id,booking_date,booking_time,completed_at,service_name,price,status,barber_id,barber_name,barber_commission_percent,barber_commission_amount,payment_method")
     .eq("barber_id",currentProfileBarberId)
     .eq("status","concluido")
     .order("completed_at",{ascending:false});
   if(error){console.error(error);adminToast("Erro ao carregar o perfil financeiro.",true);return [];}
   return data||[];
 }
-async function renderBarberProfileDay(){
+async function renderBarberProfileDay(preloaded=null){
   if(!currentProfileBarberId)return;
   const barber=barbers.find(b=>Number(b.id)===Number(currentProfileBarberId));
   const selectedDate=$("#profileDate")?.value||localDateISO();
-  const all=await loadProfileBookings();
+  const all=Array.isArray(preloaded)?preloaded:(profileBarberBookings.length?profileBarberBookings:await loadProfileBookings());
+  profileBarberBookings=all;
   const dayList=all.filter(b=>completionDateISO(b)===selectedDate);
   const dayStats=financeStats(dayList);
 
@@ -1066,6 +1076,158 @@ async function renderBarberProfileDay(){
   $("#profileYearPix").textContent=JK.money(yearStats.payments.pix.total);
   $("#profileYearCartao").textContent=JK.money(yearStats.payments.cartao.total);
   $("#profileYearDinheiro").textContent=JK.money(yearStats.payments.dinheiro.total);
+}
+
+
+function initializeBarberHistoryFilters(){
+  const today=localDateISO();
+  const month=today.slice(0,7);
+  const day=$("#profileHistoryDay");
+  const monthInput=$("#profileHistoryMonth");
+  const from=$("#profileHistoryFrom");
+  const to=$("#profileHistoryTo");
+
+  if(day&&!day.value)day.value=today;
+  if(monthInput&&!monthInput.value)monthInput.value=month;
+  if(from&&!from.value)from.value=`${today.slice(0,4)}-01-01`;
+  if(to&&!to.value)to.value=today;
+
+  syncProfileHistoryYearOptions();
+  syncProfileHistoryFields();
+}
+
+function syncProfileHistoryYearOptions(){
+  const sel=$("#profileHistoryYear");
+  if(!sel)return;
+
+  const current=sel.value;
+  const thisYear=Number(localDateISO().slice(0,4));
+  const years=new Set([thisYear]);
+
+  profileBarberBookings.forEach(b=>{
+    const y=Number(completionDateISO(b).slice(0,4));
+    if(y)years.add(y);
+  });
+
+  sel.innerHTML=[...years]
+    .sort((a,b)=>b-a)
+    .map(y=>`<option value="${y}">${y}</option>`)
+    .join("");
+
+  if(current&&[...sel.options].some(o=>o.value===current))sel.value=current;
+  else sel.value=String(thisYear);
+}
+
+function syncProfileHistoryFields(){
+  const mode=$("#profileHistoryMode")?.value||"month";
+  const dayField=$("#profileHistoryDayField");
+  const monthField=$("#profileHistoryMonthField");
+  const yearField=$("#profileHistoryYearField");
+  const customFields=$("#profileHistoryCustomFields");
+
+  if(dayField)dayField.hidden=mode!=="day";
+  if(monthField)monthField.hidden=mode!=="month";
+  if(yearField)yearField.hidden=mode!=="year";
+  if(customFields)customFields.hidden=mode!=="custom";
+}
+
+function profileHistoryRange(){
+  const mode=$("#profileHistoryMode")?.value||"month";
+  const today=localDateISO();
+
+  if(mode==="day"){
+    const day=$("#profileHistoryDay")?.value||today;
+    return {from:day,to:day,label:new Date(day+"T12:00:00").toLocaleDateString("pt-BR")};
+  }
+
+  if(mode==="month"){
+    const month=$("#profileHistoryMonth")?.value||today.slice(0,7);
+    const first=`${month}-01`;
+    const last=monthLastDate(month);
+    const label=new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric"})
+      .format(new Date(first+"T12:00:00"));
+    return {from:first,to:last,label:label[0].toUpperCase()+label.slice(1)};
+  }
+
+  if(mode==="year"){
+    const year=$("#profileHistoryYear")?.value||today.slice(0,4);
+    return {from:`${year}-01-01`,to:`${year}-12-31`,label:`Ano de ${year}`};
+  }
+
+  const from=$("#profileHistoryFrom")?.value||`${today.slice(0,4)}-01-01`;
+  const to=$("#profileHistoryTo")?.value||today;
+  const safeFrom=from<=to?from:to;
+  const safeTo=from<=to?to:from;
+  return {
+    from:safeFrom,
+    to:safeTo,
+    label:`${new Date(safeFrom+"T12:00:00").toLocaleDateString("pt-BR")} até ${new Date(safeTo+"T12:00:00").toLocaleDateString("pt-BR")}`
+  };
+}
+
+function profileClientIdentityKey(b){
+  const digits=String(b.phone||"").replace(/\D/g,"");
+  if(b.jk_customer_id)return `id:${b.jk_customer_id}`;
+  if(digits)return `phone:${digits}`;
+  return `name:${String(b.client_name||"").trim().toLowerCase()}`;
+}
+
+function renderBarberClientHistory(preloaded=null){
+  if(!currentProfileBarberId)return;
+
+  const all=Array.isArray(preloaded)?preloaded:profileBarberBookings;
+  if(Array.isArray(preloaded)){
+    profileBarberBookings=preloaded;
+    syncProfileHistoryYearOptions();
+  }
+
+  const range=profileHistoryRange();
+  const list=all.filter(b=>{
+    const date=completionDateISO(b);
+    return date>=range.from&&date<=range.to;
+  });
+
+  const stats=financeStats(list);
+  const uniqueClients=new Set(list.map(profileClientIdentityKey).filter(Boolean)).size;
+
+  const attendances=$("#profileHistoryAttendances");
+  const unique=$("#profileHistoryUniqueClients");
+  const gross=$("#profileHistoryGross");
+  const commission=$("#profileHistoryCommission");
+  const label=$("#profileHistoryLabel");
+
+  if(attendances)attendances.textContent=stats.cuts.toLocaleString("pt-BR");
+  if(unique)unique.textContent=uniqueClients.toLocaleString("pt-BR");
+  if(gross)gross.textContent=JK.money(stats.gross);
+  if(commission)commission.textContent=JK.money(stats.commission);
+  if(label)label.textContent=`Período: ${range.label} · ${stats.cuts} ${stats.cuts===1?"atendimento":"atendimentos"}`;
+
+  const rows=$("#profileHistoryRows");
+  if(!rows)return;
+
+  if(!list.length){
+    rows.innerHTML='<tr><td colspan="8"><div class="empty">Nenhum cliente atendido por este barbeiro neste período.</div></td></tr>';
+    return;
+  }
+
+  rows.innerHTML=list.map(b=>{
+    const date=completionDateISO(b);
+    const time=b.completed_at
+      ? new Intl.DateTimeFormat("pt-BR",{timeZone:"America/Sao_Paulo",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(b.completed_at))
+      : String(b.booking_time||"").slice(0,5);
+    const phone=String(b.phone||"").trim()||"—";
+
+    return `<tr>
+      <td>${new Date(date+"T12:00:00").toLocaleDateString("pt-BR")}</td>
+      <td>${time}</td>
+      <td><strong>${JK.esc(b.client_name||"—")}</strong></td>
+      <td>${JK.esc(phone)}</td>
+      <td>${JK.esc(b.service_name||"—")}</td>
+      <td>${paymentBadge(b.payment_method)}</td>
+      <td><strong>${JK.money(Number(b.price||0))}</strong></td>
+      <td>${JK.money(commissionForBooking(b))}</td>
+    </tr>`;
+  }).join("");
 }
 
 
