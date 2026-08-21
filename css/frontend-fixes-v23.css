@@ -484,3 +484,85 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   .system-usage-grid{grid-template-columns:1fr}
   .system-usage-counters{grid-template-columns:1fr}
 }
+
+
+/* ==========================================================
+   V36 — HISTÓRICO DE CLIENTES POR BARBEIRO
+   ========================================================== */
+.barber-client-history-card{
+  margin:18px 0;
+  overflow:hidden;
+}
+.barber-history-head{
+  align-items:flex-start;
+}
+.barber-history-filters{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(160px,1fr));
+  gap:12px;
+  margin:16px 0;
+  padding:14px;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:16px;
+  background:rgba(255,255,255,.015);
+}
+.barber-history-custom{
+  grid-column:span 2;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.barber-history-custom[hidden]{display:none!important}
+.barber-history-filters>.field[hidden]{display:none!important}
+
+.barber-history-kpis{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin:12px 0;
+}
+.barber-history-kpis article{
+  padding:14px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.065);
+  background:linear-gradient(145deg,rgba(255,255,255,.025),rgba(255,255,255,.008));
+}
+.barber-history-kpis span,
+.barber-history-kpis small{
+  display:block;
+  color:#939aa0;
+}
+.barber-history-kpis span{
+  font-size:.73rem;
+  text-transform:uppercase;
+  letter-spacing:.055em;
+}
+.barber-history-kpis strong{
+  display:block;
+  margin:6px 0 3px;
+  color:#f0d79b;
+  font-size:1.18rem;
+}
+.barber-history-kpis small{font-size:.66rem}
+.barber-history-label{
+  min-height:24px;
+  margin:9px 0;
+  color:#d8bd77;
+  font-size:.78rem;
+  font-weight:750;
+}
+.barber-history-table td{
+  vertical-align:middle;
+}
+@media(max-width:950px){
+  .barber-history-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .barber-history-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  .barber-history-filters{grid-template-columns:1fr}
+  .barber-history-custom{
+    grid-column:auto;
+    grid-template-columns:1fr;
+  }
+  .barber-history-kpis{grid-template-columns:1fr 1fr}
+}
