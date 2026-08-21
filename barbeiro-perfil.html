@@ -52,6 +52,99 @@
     </div>
   </div>
 
+
+  <!-- ===== HISTÓRICO COMPLETO DE CLIENTES ATENDIDOS V36 ===== -->
+  <div class="card barber-client-history-card">
+    <div class="card-head barber-history-head">
+      <div>
+        <span class="eyebrow">Histórico de atendimentos</span>
+        <h2>Clientes atendidos por este barbeiro</h2>
+        <p class="muted">Consulte todos os atendimentos concluídos por dia, mês, ano ou período personalizado.</p>
+      </div>
+    </div>
+
+    <div class="barber-history-filters">
+      <div class="field">
+        <label>Consultar por</label>
+        <select id="profileHistoryMode">
+          <option value="day">Dia</option>
+          <option value="month" selected>Mês</option>
+          <option value="year">Ano</option>
+          <option value="custom">Período personalizado</option>
+        </select>
+      </div>
+
+      <div id="profileHistoryDayField" class="field" hidden>
+        <label>Dia</label>
+        <input id="profileHistoryDay" type="date">
+      </div>
+
+      <div id="profileHistoryMonthField" class="field">
+        <label>Mês</label>
+        <input id="profileHistoryMonth" type="month">
+      </div>
+
+      <div id="profileHistoryYearField" class="field" hidden>
+        <label>Ano</label>
+        <select id="profileHistoryYear"></select>
+      </div>
+
+      <div id="profileHistoryCustomFields" class="barber-history-custom" hidden>
+        <div class="field">
+          <label>De</label>
+          <input id="profileHistoryFrom" type="date">
+        </div>
+        <div class="field">
+          <label>Até</label>
+          <input id="profileHistoryTo" type="date">
+        </div>
+      </div>
+    </div>
+
+    <div class="barber-history-kpis">
+      <article>
+        <span>Atendimentos</span>
+        <strong id="profileHistoryAttendances">0</strong>
+        <small>cortes/serviços concluídos</small>
+      </article>
+      <article>
+        <span>Clientes únicos</span>
+        <strong id="profileHistoryUniqueClients">0</strong>
+        <small>sem contar repetidos</small>
+      </article>
+      <article>
+        <span>Faturamento</span>
+        <strong id="profileHistoryGross">R$ 0,00</strong>
+        <small>valor atendido</small>
+      </article>
+      <article>
+        <span>Comissão</span>
+        <strong id="profileHistoryCommission">R$ 0,00</strong>
+        <small>comissão do barbeiro</small>
+      </article>
+    </div>
+
+    <div id="profileHistoryLabel" class="barber-history-label"></div>
+
+    <div class="table-wrap">
+      <table class="table barber-history-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Horário</th>
+            <th>Cliente</th>
+            <th>WhatsApp</th>
+            <th>Serviço</th>
+            <th>Pagamento</th>
+            <th>Valor</th>
+            <th>Comissão</th>
+          </tr>
+        </thead>
+        <tbody id="profileHistoryRows"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="barber-profile-periods">
     <div class="card">
       <h3>Resumo do mês</h3>
