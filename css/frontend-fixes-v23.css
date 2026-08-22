@@ -622,3 +622,17 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 /* ===== V42 ENCAIXE — HORA ATUAL ===== */
 #walkinTime{font-variant-numeric:tabular-nums}
 .walkin-datetime input[type="time"]{min-width:130px}
+
+
+/* ===== V43 AGENDA INTELIGENTE ===== */
+.booking-smart-note{
+  grid-column:1/-1;
+  margin:10px 0 12px;
+  padding:10px 12px;
+  border:1px solid rgba(216,189,119,.16);
+  border-radius:12px;
+  background:rgba(216,189,119,.04);
+  color:#b9b3a8;
+  font-size:.78rem;
+  line-height:1.45;
+}
