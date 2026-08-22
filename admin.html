@@ -6,5 +6,22 @@
 <aside class="sidebar"><a class="admin-sidebar-logo" href="admin.html"><img src="assets/jk-logo.png" alt="JK Barbearia"></a><nav class="side-nav side-nav-links"><a class="side-link active" href="admin.html"><span>⌂</span>Visão geral</a><a class="side-link " href="agendamentos-admin.html"><span>▣</span>Agendamentos</a><a class="side-link " href="clientes-admin.html"><span>♧</span>Clientes</a><a class="side-link " href="servicos-admin.html"><span>✂</span>Serviços</a><a class="side-link " href="barbeiros-admin.html"><span>♙</span>Barbeiros</a><a class="side-link " href="financeiro-admin.html"><span>$</span>Financeiro</a><a class="side-link " href="caixa-admin.html"><span>▤</span>Caixa</a><a class="side-link " href="galeria-admin.html"><span>▧</span>Galeria</a><a class="side-link " href="configuracoes-admin.html"><span>⚙</span>Configurações</a></nav><div class="sidebar-bottom"><a class="side-link" href="index.html"><span>↗</span>Ver site</a><button id="logout" class="side-link side-button"><span>⇥</span>Sair</button></div></aside><!-- ===== CONTEÚDO PRINCIPAL ===== -->
 <!-- ===== CONTEÚDO DA PÁGINA ADMINISTRATIVA ===== -->
 <main class="admin-main"><div class="admin-top"><div class="admin-page-heading"><span class="eyebrow">Painel administrativo</span><h1>Visão geral</h1></div><div class="admin-top-actions"><a class="btn btn-outline" href="index.html">Ver site</a></div></div><!-- ===== VISÃO GERAL / DASHBOARD ===== -->
-<section id="dashboard" class="panel active"><div class="kpis"><div class="kpi"><span>Hoje</span><strong id="kpiToday">0</strong></div><div class="kpi"><span>Este mês</span><strong id="kpiMonth">0</strong></div><div class="kpi"><span>Faturamento do mês*</span><strong id="kpiRevenue">R$ 0</strong></div><div class="kpi"><span>Serviços ativos</span><strong id="kpiServices">0</strong></div><div class="kpi"><span>Barbeiros ativos</span><strong id="kpiBarbers">0</strong></div><div class="kpi"><span>Fotos na galeria</span><strong id="kpiGallery">0</strong></div></div><div class="card"><p class="muted">*Estimativa com agendamentos não cancelados.</p></div></section></main></div><!-- ===== SCRIPTS / FUNCIONALIDADES ===== -->
+<section id="dashboard" class="panel active">
+<div class="dashboard-pro-head card"><div><span class="eyebrow">Gestão em tempo real</span><h2>Resumo da barbearia</h2><p class="muted">Indicadores calculados somente com atendimentos concluídos.</p></div></div>
+<div class="kpis dashboard-pro-kpis">
+  <div class="kpi"><span>Atendimentos hoje</span><strong id="kpiToday">0</strong></div>
+  <div class="kpi"><span>Atendimentos no mês</span><strong id="kpiMonth">0</strong></div>
+  <div class="kpi"><span>Faturamento do mês</span><strong id="kpiRevenue">R$ 0</strong></div>
+  <div class="kpi"><span>Comissões do mês</span><strong id="kpiCommission">R$ 0</strong></div>
+  <div class="kpi"><span>Despesas do mês</span><strong id="kpiExpenses">R$ 0</strong></div>
+  <div class="kpi dashboard-profit-kpi"><span>Lucro líquido real</span><strong id="kpiProfit">R$ 0</strong></div>
+  <div class="kpi"><span>Ticket médio</span><strong id="kpiTicket">R$ 0</strong></div>
+  <div class="kpi"><span>Faltas no mês</span><strong id="kpiNoShow">0</strong></div>
+</div>
+<div class="dashboard-pro-grid">
+  <article class="card"><span class="eyebrow">Destaque do mês</span><h3>Barbeiro com mais atendimentos</h3><strong id="kpiTopBarber" class="dashboard-highlight">—</strong></article>
+  <article class="card"><span class="eyebrow">Fidelidade</span><h3>Cliente que mais retornou</h3><strong id="kpiTopCustomer" class="dashboard-highlight">—</strong></article>
+</div>
+<div class="card dashboard-quick-links"><a class="btn btn-primary" href="financeiro-admin.html#expensesManager">Lançar despesa</a><a class="btn btn-outline" href="financeiro-admin.html">Abrir financeiro</a><a class="btn btn-outline" href="clientes-admin.html">Ver clientes</a></div>
+</section></main></div><!-- ===== SCRIPTS / FUNCIONALIDADES ===== -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/admin.js"></script></body></html>
