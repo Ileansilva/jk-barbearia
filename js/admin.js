@@ -1844,8 +1844,13 @@ function renderExpenses(){
 
 async function saveExpense(e){
   e.preventDefault();
-  const btn=e.currentTarget.querySelector('button[type="submit"]');
+  const form=e.currentTarget;
+  const btn=form.querySelector('button[type="submit"]');
+  const statusEl=$("#expenseSaveStatus");
+  let committed=false;
   adminBusy(btn,true,"Salvando...");
+  if(statusEl){statusEl.textContent="Salvando despesa...";statusEl.dataset.state="loading";}
+
   try{
     const payload={
       expense_date:$("#expenseDate")?.value||localDateISO(),
@@ -1854,17 +1859,59 @@ async function saveExpense(e){
       amount:Number($("#expenseAmount")?.value||0),
       payment_method:$("#expensePayment")?.value||"pix"
     };
+
     if(payload.description.length<2)throw new Error("Informe a descrição da despesa.");
     if(!(payload.amount>0))throw new Error("Informe um valor maior que zero.");
-    const {data,error}=await sb.from("expenses").insert(payload).select("*").single();
+
+    const {data,error}=await window.sb.from("expenses").insert(payload).select("*").single();
     if(error)throw error;
-    await logAudit("create","expense",data.id,`Despesa adicionada: ${payload.description}`,null,payload);
-    e.currentTarget.reset();
+    if(!data?.id)throw new Error("O banco não confirmou o registro da despesa.");
+
+    committed=true;
+
+    // Atualiza a tela imediatamente com a linha confirmada pelo banco.
+    financeExpenses=[
+      data,
+      ...financeExpenses.filter(x=>Number(x.id)!==Number(data.id))
+    ].sort((a,b)=>{
+      const d=String(b.expense_date||"").localeCompare(String(a.expense_date||""));
+      return d||Number(b.id)-Number(a.id);
+    });
+    renderExpenses();
+
+    form.reset();
     if($("#expenseDate"))$("#expenseDate").value=localDateISO();
-    adminToast("Despesa registrada. O lucro líquido foi recalculado.");
-    await Promise.all([loadExpenses(),renderKPIs()]);
-  }catch(error){adminToast("Erro ao salvar despesa: "+error.message,true);}
-  finally{adminBusy(btn,false);}
+
+    if(statusEl){
+      statusEl.textContent=`Despesa salva com sucesso: ${JK.money(data.amount)} — ${data.description}`;
+      statusEl.dataset.state="success";
+    }
+    adminToast("Despesa registrada com sucesso.");
+
+    // Auditoria e demais indicadores não podem transformar um save já confirmado em erro.
+    Promise.allSettled([
+      logAudit("create","expense",data.id,`Despesa adicionada: ${payload.description}`,null,payload),
+      renderKPIs(),
+      loadExpenses()
+    ]).then(results=>{
+      results.forEach(r=>{if(r.status==="rejected")console.warn("JK pós-despesa:",r.reason);});
+    });
+  }catch(error){
+    console.error("JK despesa:",error);
+    if(committed){
+      if(statusEl){
+        statusEl.textContent="Despesa salva no banco. Atualizando os indicadores...";
+        statusEl.dataset.state="success";
+      }
+      adminToast("Despesa salva. Atualizando os indicadores...");
+    }else{
+      const message="Erro ao salvar despesa: "+(error?.message||"erro desconhecido");
+      if(statusEl){statusEl.textContent=message;statusEl.dataset.state="error";}
+      adminToast(message,true);
+    }
+  }finally{
+    adminBusy(btn,false);
+  }
 }
 
 async function deleteExpense(id,button=null){
