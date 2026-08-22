@@ -114,7 +114,7 @@
       <div class="field"><label>Descrição</label><input id="expenseDescription" maxlength="160" required placeholder="Ex.: Conta de energia"></div>
       <div class="field"><label>Valor</label><input id="expenseAmount" type="number" min="0" step="0.01" required></div>
       <div class="field"><label>Pagamento</label><select id="expensePayment"><option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option><option value="boleto">Boleto</option><option value="transferencia">Transferência</option><option value="outros">Outros</option></select></div>
-      <div class="field expense-submit-field"><button class="btn btn-primary" type="submit">Adicionar despesa</button></div>
+      <div class="field expense-submit-field"><button class="btn btn-primary" type="submit">Adicionar despesa</button></div><div id="expenseSaveStatus" class="expense-save-status" aria-live="polite"></div>
     </form>
     <div class="expense-summary">
       <article><span>Despesas do mês</span><strong id="expenseMonthTotal">R$ 0,00</strong></article>
@@ -251,4 +251,4 @@
   </div>
 </div>
 </section></main></div><!-- ===== SCRIPTS / FUNCIONALIDADES ===== -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/admin.js"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/admin.js?v=40"></script></body></html>
