@@ -103,6 +103,26 @@
     </article>
   </div>
 
+  <section id="expensesManager" class="card expense-manager-card">
+    <div class="card-head expense-head">
+      <div><span class="eyebrow">Lucro real</span><h2>Despesas da barbearia</h2><p class="muted">Registre aluguel, água, energia, produtos, manutenção e outras despesas.</p></div>
+      <div class="expense-report-actions"><button id="exportFinanceCsvBtn" class="btn btn-outline" type="button">Exportar Excel/CSV</button><button id="printFinanceReportBtn" class="btn btn-outline" type="button">Imprimir / PDF</button></div>
+    </div>
+    <form id="expenseForm" class="expense-form">
+      <div class="field"><label>Data</label><input id="expenseDate" type="date" required></div>
+      <div class="field"><label>Categoria</label><select id="expenseCategory"><option value="aluguel">Aluguel</option><option value="agua">Água</option><option value="energia">Energia</option><option value="produtos">Produtos</option><option value="manutencao">Manutenção</option><option value="salarios">Salários</option><option value="marketing">Marketing</option><option value="impostos">Impostos</option><option value="outros" selected>Outros</option></select></div>
+      <div class="field"><label>Descrição</label><input id="expenseDescription" maxlength="160" required placeholder="Ex.: Conta de energia"></div>
+      <div class="field"><label>Valor</label><input id="expenseAmount" type="number" min="0" step="0.01" required></div>
+      <div class="field"><label>Pagamento</label><select id="expensePayment"><option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option><option value="boleto">Boleto</option><option value="transferencia">Transferência</option><option value="outros">Outros</option></select></div>
+      <div class="field expense-submit-field"><button class="btn btn-primary" type="submit">Adicionar despesa</button></div>
+    </form>
+    <div class="expense-summary">
+      <article><span>Despesas do mês</span><strong id="expenseMonthTotal">R$ 0,00</strong></article>
+      <article class="real-profit"><span>Lucro líquido do mês</span><strong id="financeRealProfit">R$ 0,00</strong><small>Faturamento − comissões − despesas</small></article>
+    </div>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Pagamento</th><th>Valor</th><th>Ações</th></tr></thead><tbody id="expenseRows"></tbody></table></div>
+  </section>
+
   <div class="card finance-custom-result-card">
     <div class="card-head">
       <div>
