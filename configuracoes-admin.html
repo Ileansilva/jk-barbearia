@@ -207,6 +207,16 @@
       <div id="systemUsageWarning" class="system-usage-warning" hidden></div>
     </section>
 
+    <section class="settings-section card">
+      <div class="settings-section-head"><div><span class="settings-step">08</span><h3>Programa de fidelidade</h3><p class="muted">Acompanhe automaticamente quantos atendimentos cada cliente já concluiu.</p></div></div>
+      <div class="settings-toggle-row"><div><strong>Fidelidade ativa</strong><span class="muted">Exibe o progresso na área de clientes.</span></div><label class="switch-control"><input id="loyaltyEnabled" name="loyaltyEnabled" type="checkbox"><span></span></label></div>
+      <div class="settings-grid"><div class="field"><label>Meta de atendimentos</label><div class="input-suffix"><input id="loyaltyGoal" name="loyaltyGoal" type="number" min="2" max="100" value="10"><span>atendimentos</span></div></div></div>
+    </section>
+    <section class="settings-section card">
+      <div class="settings-section-head"><div><span class="settings-step">09</span><h3>Histórico de alterações</h3><p class="muted">Registros recentes de ações administrativas importantes.</p></div><button id="refreshAuditBtn" type="button" class="btn btn-outline">Atualizar</button></div>
+      <div id="auditLogList" class="audit-log-list"><div class="empty">Carregando histórico...</div></div>
+    </section>
+
     <div class="settings-save-bar">
       <div>
         <strong>Alterações na agenda</strong>
