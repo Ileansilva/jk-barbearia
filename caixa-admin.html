@@ -102,6 +102,27 @@
             </div>
             <div class="field"><label>Valor</label><input id="cashMovementAmount" type="number" min="0.01" step="0.01" required></div>
             <div class="field full"><label>Descrição</label><input id="cashMovementDescription" maxlength="180" placeholder="Ex.: compra de material, retirada, troco..." required></div>
+            <div id="cashExpenseSyncBox" class="field full cash-expense-sync" hidden>
+              <label class="cash-expense-sync-toggle">
+                <input id="cashRegisterAsExpense" type="checkbox">
+                <span><strong>Registrar também como despesa</strong><small>Cria automaticamente a mesma saída no Financeiro, sem duplicar valores.</small></span>
+              </label>
+              <div id="cashExpenseCategoryField" class="cash-expense-category" hidden>
+                <label>Categoria da despesa</label>
+                <select id="cashExpenseCategory">
+                  <option value="aluguel">Aluguel</option>
+                  <option value="agua">Água</option>
+                  <option value="energia">Energia</option>
+                  <option value="produtos">Produtos</option>
+                  <option value="manutencao">Manutenção</option>
+                  <option value="salarios">Salários</option>
+                  <option value="marketing">Marketing</option>
+                  <option value="impostos">Impostos</option>
+                  <option value="outros" selected>Outros</option>
+                </select>
+              </div>
+            </div>
+            <div id="cashMovementSaveStatus" class="field full cash-movement-save-status" aria-live="polite"></div>
             <div class="field full"><button class="btn btn-primary" type="submit">Registrar movimentação</button></div>
           </form>
         </article>
@@ -202,7 +223,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/cash.js"></script>
-<script src="js/admin.js"></script>
+<script src="js/cash.js?v=41"></script>
+<script src="js/admin.js?v=40"></script>
 </body>
 </html>
