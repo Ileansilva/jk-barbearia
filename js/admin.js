@@ -20,7 +20,8 @@ e dados da empresa pelo painel de Configurações.
 ==========================================================
 */
 
-let session=null, services=[], barbers=[], galleryItems=[], financeBookings=[], currentProfileBarberId=null, profileBarberBookings=[];
+let session=null, services=[], barbers=[], galleryItems=[], financeBookings=[], currentProfileBarberId=null, profileBarberBookings=[], financeExpenses=[];
+  await loadExpenses();
 let bookingRealtimeChannel=null;
 let bookingMessageSettingsCache=null;
 let bookingAlarmTimer=null;
@@ -73,6 +74,12 @@ document.addEventListener("DOMContentLoaded",async()=>{
   $("#barberForm")?.addEventListener("submit",saveBarber);
   $("#galleryForm")?.addEventListener("submit",saveGalleryItem);
   $("#settingsForm")?.addEventListener("submit",saveSettings);
+  $("#expenseForm")?.addEventListener("submit",saveExpense);
+  if($("#expenseDate")&&!$("#expenseDate").value)$("#expenseDate").value=localDateISO();
+  $("#exportFinanceCsvBtn")?.addEventListener("click",exportFinanceCSV);
+  $("#printFinanceReportBtn")?.addEventListener("click",()=>window.print());
+  $("#refreshAuditBtn")?.addEventListener("click",loadAuditLogs);
+
   $("#financeBarberSelect")?.addEventListener("change",()=>renderFinance());
   $("#financeDateFilter")?.addEventListener("change",()=>{if(getFinanceDate())clearFinanceMonth();renderFinance();});
   $("#financeMonthFilter")?.addEventListener("change",()=>{if(getFinanceMonth())clearFinanceDate();renderFinance();});
@@ -401,23 +408,39 @@ async function renderAll(){return renderCurrentPage();}
 // ===== INDICADORES DA VISÃO GERAL =====
 async function renderKPIs(){
   const today=JK.todayISO(),month=today.slice(0,7);
-  const {data,error}=await sb.from("bookings").select("booking_date,price,status");
-  if(error)return console.error(error);
-
-  const valid=(data||[]).filter(x=>x.status!=="cancelado");
-  if($("#kpiToday"))$("#kpiToday").textContent=valid.filter(x=>x.booking_date===today).length;
-  const monthList=valid.filter(x=>x.booking_date.startsWith(month));
-  if($("#kpiMonth"))$("#kpiMonth").textContent=monthList.length;
-  if($("#kpiRevenue"))$("#kpiRevenue").textContent=JK.money(monthList.reduce((a,x)=>a+Number(x.price||0),0));
-
-  const [svc,brb,gal]=await Promise.all([
-    sb.from("services").select("*",{count:"exact",head:true}).eq("active",true),
-    sb.from("barbers").select("*",{count:"exact",head:true}).eq("active",true),
-    sb.from("gallery").select("*",{count:"exact",head:true}).eq("active",true)
+  const [bookRes,expRes]=await Promise.all([
+    sb.from("bookings").select("client_name,jk_customer_id,booking_date,price,status,barber_id,barber_name,barber_commission_amount"),
+    sb.from("expenses").select("expense_date,amount")
   ]);
-  if($("#kpiServices"))$("#kpiServices").textContent=svc.count||0;
-  if($("#kpiBarbers"))$("#kpiBarbers").textContent=brb.count||0;
-  if($("#kpiGallery"))$("#kpiGallery").textContent=gal.count||0;
+  if(bookRes.error)return console.error(bookRes.error);
+
+  const all=bookRes.data||[];
+  const completed=all.filter(x=>x.status==="concluido");
+  const monthList=completed.filter(x=>String(x.booking_date).startsWith(month));
+  const todayList=completed.filter(x=>x.booking_date===today);
+  const gross=monthList.reduce((a,x)=>a+Number(x.price||0),0);
+  const commission=monthList.reduce((a,x)=>a+Number(x.barber_commission_amount||0),0);
+  const expenses=(expRes.data||[]).filter(x=>String(x.expense_date).startsWith(month)).reduce((a,x)=>a+Number(x.amount||0),0);
+  const noShows=all.filter(x=>x.status==="nao_compareceu"&&String(x.booking_date).startsWith(month)).length;
+
+  if($("#kpiToday"))$("#kpiToday").textContent=todayList.length;
+  if($("#kpiMonth"))$("#kpiMonth").textContent=monthList.length;
+  if($("#kpiRevenue"))$("#kpiRevenue").textContent=JK.money(gross);
+  if($("#kpiCommission"))$("#kpiCommission").textContent=JK.money(commission);
+  if($("#kpiExpenses"))$("#kpiExpenses").textContent=JK.money(expenses);
+  if($("#kpiProfit"))$("#kpiProfit").textContent=JK.money(gross-commission-expenses);
+  if($("#kpiTicket"))$("#kpiTicket").textContent=JK.money(monthList.length?gross/monthList.length:0);
+  if($("#kpiNoShow"))$("#kpiNoShow").textContent=noShows;
+
+  const byBarber={};
+  monthList.forEach(x=>{const k=x.barber_name||"Sem barbeiro";byBarber[k]=(byBarber[k]||0)+1;});
+  const topBarber=Object.entries(byBarber).sort((a,b)=>b[1]-a[1])[0];
+  if($("#kpiTopBarber"))$("#kpiTopBarber").textContent=topBarber?`${topBarber[0]} — ${topBarber[1]} atendimentos`:"Sem atendimentos no mês";
+
+  const byCustomer={};
+  monthList.forEach(x=>{const k=x.client_name||"Cliente";byCustomer[k]=(byCustomer[k]||0)+1;});
+  const topCustomer=Object.entries(byCustomer).sort((a,b)=>b[1]-a[1])[0];
+  if($("#kpiTopCustomer"))$("#kpiTopCustomer").textContent=topCustomer?`${topCustomer[0]} — ${topCustomer[1]} visitas`:"Sem clientes no mês";
 }
 
 // ===== LISTAGEM DOS AGENDAMENTOS =====
@@ -454,6 +477,7 @@ async function renderBookings(){
         <button type="button" class="mini-btn" onclick="setStatus(${b.id},'cancelado',this)">Cancelar</button>
       `:b.status==="confirmado"?`
         <button type="button" class="mini-btn primary-mini" onclick="setStatus(${b.id},'concluido',this)">Concluir</button>
+        <button type="button" class="mini-btn noshow-mini" onclick="setStatus(${b.id},'nao_compareceu',this)">Não compareceu</button>
         <button type="button" class="mini-btn" onclick="setStatus(${b.id},'cancelado',this)">Cancelar</button>
       `:""}
       <button type="button" class="mini-btn danger-mini" onclick="deleteBooking(${b.id},this)">Excluir</button>
@@ -487,12 +511,12 @@ async function setStatus(id,status,button=null){
 
   const shouldWhatsApp=["confirmado","cancelado"].includes(status);
   const waWindow=shouldWhatsApp?openBookingWhatsAppWindow():null;
-  adminBusy(button,true,status==="concluido"?"Concluindo...":status==="confirmado"?"Confirmando...":"Cancelando...");
+  adminBusy(button,true,status==="concluido"?"Concluindo...":status==="confirmado"?"Confirmando...":status==="nao_compareceu"?"Registrando falta...":"Cancelando...");
 
   try{
     let payload={status,completed_at:status==="concluido"?new Date().toISOString():null};
 
-    const needsBooking=status==="concluido"||shouldWhatsApp;
+    const needsBooking=status==="concluido"||status==="nao_compareceu"||shouldWhatsApp;
     let bookingData=null;
 
     if(needsBooking){
@@ -530,12 +554,12 @@ async function setStatus(id,status,button=null){
       waWindow?.close?.();
     }
 
+    await logAudit("status_booking","booking",id,`Agendamento alterado para ${status}.`,bookingData?.status?{status:bookingData.status}:null,{status});
     adminToast(
-      status==="concluido"
-        ?"Corte concluído e lançado no financeiro."
-        :status==="confirmado"
-          ?"Agendamento confirmado. A mensagem do WhatsApp foi preparada."
-          :"Agendamento cancelado. A mensagem do WhatsApp foi preparada."
+      status==="concluido"?"Corte concluído e lançado no financeiro."
+      :status==="confirmado"?"Agendamento confirmado. A mensagem do WhatsApp foi preparada."
+      :status==="nao_compareceu"?"Falta registrada. Este atendimento não entra no financeiro."
+      :"Agendamento cancelado. A mensagem do WhatsApp foi preparada."
     );
     await renderBookings();
   }catch(error){
@@ -1689,6 +1713,131 @@ async function removeGalleryItem(id){
 }
 
 // ===== CARREGA CONFIGURAÇÕES =====
+
+// ===== GESTÃO PRO V37: AUDITORIA / DESPESAS / RELATÓRIOS =====
+async function logAudit(action,entityType,entityId,description,oldData=null,newData=null){
+  try{
+    await sb.from("audit_logs").insert({
+      action,
+      entity_type:entityType,
+      entity_id:entityId==null?null:String(entityId),
+      description,
+      old_data:oldData,
+      new_data:newData
+    });
+  }catch(error){console.warn("JK Audit:",error);}
+}
+
+async function loadAuditLogs(){
+  const root=$("#auditLogList");
+  if(!root)return;
+  root.innerHTML='<div class="empty">Carregando histórico...</div>';
+  const {data,error}=await sb.from("audit_logs").select("*").order("created_at",{ascending:false}).limit(30);
+  if(error){root.innerHTML='<div class="empty">Não foi possível carregar o histórico.</div>';return;}
+  if(!data?.length){root.innerHTML='<div class="empty">Nenhuma alteração importante registrada ainda.</div>';return;}
+  root.innerHTML=data.map(x=>`<article class="audit-item"><div><strong>${JK.esc(x.description)}</strong><span>${new Date(x.created_at).toLocaleString("pt-BR")}</span></div><small>${JK.esc(x.entity_type)}${x.entity_id?` #${JK.esc(x.entity_id)}`:""}</small></article>`).join("");
+}
+
+async function loadExpenses(){
+  const root=$("#expenseRows");
+  if(!root)return [];
+  const {data,error}=await sb.from("expenses").select("*").order("expense_date",{ascending:false}).order("id",{ascending:false});
+  if(error){root.innerHTML='<tr><td colspan="6">Erro ao carregar despesas.</td></tr>';return [];}
+  financeExpenses=data||[];
+  renderExpenses();
+  return financeExpenses;
+}
+
+function expenseMonthValue(){
+  return $("#financeMonthFilter")?.value||localDateISO().slice(0,7);
+}
+
+function renderExpenses(){
+  const root=$("#expenseRows");
+  if(!root)return;
+  const month=expenseMonthValue();
+  const rows=financeExpenses.filter(x=>String(x.expense_date).startsWith(month));
+  const total=rows.reduce((a,x)=>a+Number(x.amount||0),0);
+  if($("#expenseMonthTotal"))$("#expenseMonthTotal").textContent=JK.money(total);
+
+  const monthBookings=financeBookings.filter(b=>completionDateISO(b).startsWith(month));
+  const stats=financeStats(monthBookings);
+  if($("#financeRealProfit"))$("#financeRealProfit").textContent=JK.money(stats.net-total);
+
+  if(!rows.length){root.innerHTML='<tr><td colspan="6"><div class="empty">Nenhuma despesa registrada neste mês.</div></td></tr>';return;}
+  root.innerHTML=rows.map(x=>`<tr>
+    <td>${new Date(x.expense_date+"T12:00:00").toLocaleDateString("pt-BR")}</td>
+    <td>${JK.esc(String(x.category||"outros").replaceAll("_"," "))}</td>
+    <td><strong>${JK.esc(x.description)}</strong></td>
+    <td>${JK.esc(x.payment_method||"—")}</td>
+    <td><strong>${JK.money(x.amount)}</strong></td>
+    <td><button class="mini-btn danger-mini" type="button" onclick="deleteExpense(${x.id},this)">Excluir</button></td>
+  </tr>`).join("");
+}
+
+async function saveExpense(e){
+  e.preventDefault();
+  const btn=e.currentTarget.querySelector('button[type="submit"]');
+  adminBusy(btn,true,"Salvando...");
+  try{
+    const payload={
+      expense_date:$("#expenseDate")?.value||localDateISO(),
+      category:$("#expenseCategory")?.value||"outros",
+      description:String($("#expenseDescription")?.value||"").trim(),
+      amount:Number($("#expenseAmount")?.value||0),
+      payment_method:$("#expensePayment")?.value||"pix"
+    };
+    if(payload.description.length<2)throw new Error("Informe a descrição da despesa.");
+    if(!(payload.amount>0))throw new Error("Informe um valor maior que zero.");
+    const {data,error}=await sb.from("expenses").insert(payload).select("*").single();
+    if(error)throw error;
+    await logAudit("create","expense",data.id,`Despesa adicionada: ${payload.description}`,null,payload);
+    e.currentTarget.reset();
+    if($("#expenseDate"))$("#expenseDate").value=localDateISO();
+    adminToast("Despesa registrada. O lucro líquido foi recalculado.");
+    await Promise.all([loadExpenses(),renderKPIs()]);
+  }catch(error){adminToast("Erro ao salvar despesa: "+error.message,true);}
+  finally{adminBusy(btn,false);}
+}
+
+async function deleteExpense(id,button=null){
+  await ownerProtectedAction({
+    title:"Excluir despesa",
+    description:"Informe e-mail e senha do proprietário para excluir esta despesa.",
+    confirmText:"Excluir despesa",
+    action:async()=>{
+      adminBusy(button,true,"Excluindo...");
+      try{
+        const row=financeExpenses.find(x=>Number(x.id)===Number(id));
+        const {error}=await sb.from("expenses").delete().eq("id",id);
+        if(error)throw error;
+        await logAudit("delete","expense",id,`Despesa excluída: ${row?.description||id}`,row,null);
+        adminToast("Despesa excluída.");
+        await Promise.all([loadExpenses(),renderKPIs()]);
+      }finally{adminBusy(button,false);}
+    }
+  });
+}
+
+function csvCell(value){
+  const str=String(value??"").replaceAll('"','""');
+  return `"${str}"`;
+}
+function exportFinanceCSV(){
+  const month=expenseMonthValue();
+  const rows=financeBookings.filter(b=>completionDateISO(b).startsWith(month));
+  const expenses=financeExpenses.filter(x=>String(x.expense_date).startsWith(month));
+  const lines=[["TIPO","DATA","DESCRIÇÃO","BARBEIRO","PAGAMENTO","VALOR","COMISSÃO"]];
+  rows.forEach(b=>lines.push(["ATENDIMENTO",completionDateISO(b),b.service_name,b.barber_name,b.payment_method,Number(b.price||0).toFixed(2),commissionForBooking(b).toFixed(2)]));
+  expenses.forEach(x=>lines.push(["DESPESA",x.expense_date,x.description,x.category,x.payment_method,(-Number(x.amount||0)).toFixed(2),"0.00"]));
+  const csv="\ufeff"+lines.map(r=>r.map(csvCell).join(";")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download=`jk-financeiro-${month}.csv`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),500);
+}
+
+
 async function loadSettings(){
   const {data,error}=await sb.from("settings").select("*").eq("id",1).single();
   if(error){adminToast("Erro ao carregar configurações: "+error.message,true);return;}
@@ -1709,6 +1858,8 @@ async function loadSettings(){
   if($("#customerArrivalMinutes"))$("#customerArrivalMinutes").value=Number(data.customer_arrival_minutes||10);
   if($("#bookingConfirmMessageTemplate"))$("#bookingConfirmMessageTemplate").value=data.booking_confirm_message_template||"";
   if($("#bookingCancelMessageTemplate"))$("#bookingCancelMessageTemplate").value=data.booking_cancel_message_template||"";
+  if($("#loyaltyEnabled"))$("#loyaltyEnabled").checked=data.loyalty_enabled!==false;
+  if($("#loyaltyGoal"))$("#loyaltyGoal").value=Number(data.loyalty_goal||10);
   bookingMessageSettingsCache={
     customer_arrival_minutes:Number(data.customer_arrival_minutes||10),
     booking_confirm_message_template:data.booking_confirm_message_template||"",
@@ -1716,6 +1867,7 @@ async function loadSettings(){
   };
 
   initSettingsVisualControls();
+  await loadAuditLogs();
 }
 
 // ===== SALVA CONFIGURAÇÕES DA BARBEARIA =====
@@ -1758,7 +1910,9 @@ async function saveSettings(e){
       booking_notice:String(f.get("bookingNotice")||"").trim(),
       customer_arrival_minutes:Math.max(0,Math.min(180,Number(f.get("customerArrivalMinutes")||10))),
       booking_confirm_message_template:String(f.get("bookingConfirmMessageTemplate")||"").trim(),
-      booking_cancel_message_template:String(f.get("bookingCancelMessageTemplate")||"").trim()
+      booking_cancel_message_template:String(f.get("bookingCancelMessageTemplate")||"").trim(),
+      loyalty_enabled:$("#loyaltyEnabled")?.checked!==false,
+      loyalty_goal:Math.max(2,Math.min(100,Number(f.get("loyaltyGoal")||10)))
     };
 
     const {error}=await sb.from("settings").update(payload).eq("id",1);
