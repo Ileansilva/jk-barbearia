@@ -584,3 +584,16 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 @media(max-width:1000px){.dashboard-pro-kpis{grid-template-columns:repeat(2,1fr)}.expense-form{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:650px){.dashboard-pro-grid,.expense-summary{grid-template-columns:1fr}.expense-form{grid-template-columns:1fr}.dashboard-pro-kpis{grid-template-columns:1fr 1fr}.audit-item{flex-direction:column}}
 @media print{.sidebar,.admin-top,.finance-filter-board,.expense-form,.expense-report-actions,.action-row{display:none!important}.admin-main{margin:0!important;padding:0!important}.card{break-inside:avoid}}
+
+
+/* ===== V40 DESPESAS — CONFIRMAÇÃO VISÍVEL ===== */
+.expense-save-status{
+  grid-column:1/-1;
+  min-height:20px;
+  padding:0 2px;
+  font-size:.78rem;
+  font-weight:700;
+}
+.expense-save-status[data-state="loading"]{color:#d8bd77}
+.expense-save-status[data-state="success"]{color:#82d6a3}
+.expense-save-status[data-state="error"]{color:#ff9c9c}
