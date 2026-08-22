@@ -617,3 +617,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .cash-movement-save-status[data-state="loading"]{color:#d8bd77}
 .cash-movement-save-status[data-state="success"]{color:#82d6a3}
 .cash-movement-save-status[data-state="error"]{color:#ff9c9c}
+
+
+/* ===== V42 ENCAIXE — HORA ATUAL ===== */
+#walkinTime{font-variant-numeric:tabular-nums}
+.walkin-datetime input[type="time"]{min-width:130px}
