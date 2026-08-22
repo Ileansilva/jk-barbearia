@@ -1795,6 +1795,8 @@ async function logAudit(action,entityType,entityId,description,oldData=null,newD
   }catch(error){console.warn("JK Audit:",error);}
 }
 
+window.logAudit=logAudit;
+
 async function loadAuditLogs(){
   const root=$("#auditLogList");
   if(!root)return;
@@ -1923,6 +1925,9 @@ async function deleteExpense(id,button=null){
       adminBusy(button,true,"Excluindo...");
       try{
         const row=financeExpenses.find(x=>Number(x.id)===Number(id));
+        if(row?.cash_movement_id){
+          throw new Error("Esta despesa foi criada pelo Caixa. Exclua a movimentação no Caixa para manter os dois registros sincronizados.");
+        }
         const {error}=await sb.from("expenses").delete().eq("id",id);
         if(error)throw error;
         await logAudit("delete","expense",id,`Despesa excluída: ${row?.description||id}`,row,null);
