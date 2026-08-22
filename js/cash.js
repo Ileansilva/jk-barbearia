@@ -50,6 +50,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   if(document.body?.dataset?.adminPage!=="cash")return;
   cashQ("#openCashForm")?.addEventListener("submit",openCashRegister);
   cashQ("#cashMovementForm")?.addEventListener("submit",addCashMovement);
+  cashQ("#cashMovementType")?.addEventListener("change",syncCashExpenseOption);
+  cashQ("#cashRegisterAsExpense")?.addEventListener("change",syncCashExpenseOption);
+  syncCashExpenseOption();
   cashQ("#closeCashForm")?.addEventListener("submit",closeCashRegister);
   cashQ("#refreshCashBtn")?.addEventListener("click",renderCashAdmin);
   cashQ("#cashCountedAmount")?.addEventListener("input",updateCashClosePreview);
@@ -177,15 +180,32 @@ function renderCashMovements(){
     </div>`).join("");
 }
 
+
+function syncCashExpenseOption(){
+  const type=cashQ("#cashMovementType")?.value||"entrada";
+  const box=cashQ("#cashExpenseSyncBox");
+  const check=cashQ("#cashRegisterAsExpense");
+  const category=cashQ("#cashExpenseCategoryField");
+  const eligible=["saida","sangria"].includes(type);
+
+  if(box)box.hidden=!eligible;
+  if(!eligible&&check)check.checked=false;
+  if(category)category.hidden=!(eligible&&check?.checked);
+}
+
 async function addCashMovement(e){
   e.preventDefault();
   if(!currentCashRegister)return adminToast("Abra o caixa primeiro.",true);
   if(!cashLock("movement"))return;
 
+  const form=e.currentTarget;
   const type=cashQ("#cashMovementType").value;
   const amount=Number(cashQ("#cashMovementAmount").value||0);
   const description=String(cashQ("#cashMovementDescription").value||"").trim();
-  const btn=e.currentTarget.querySelector('button[type="submit"]');
+  const registerExpense=["saida","sangria"].includes(type)&&!!cashQ("#cashRegisterAsExpense")?.checked;
+  const expenseCategory=cashQ("#cashExpenseCategory")?.value||"outros";
+  const statusEl=cashQ("#cashMovementSaveStatus");
+  const btn=form.querySelector('button[type="submit"]');
 
   if(amount<=0){cashUnlock("movement");return adminToast("Informe um valor maior que zero.",true);}
   if(description.length<2){cashUnlock("movement");return adminToast("Informe a descrição.",true);}
@@ -200,57 +220,70 @@ async function addCashMovement(e){
     description,
     operation_key:operationKey,
     created_at:new Date().toISOString(),
-    _optimistic:true
+    _optimistic:true,
+    _registerExpense:registerExpense
   };
 
-  // Resposta visual instantânea.
   cashPendingMovementCount++;
   currentCashMovements=[optimisticRow,...currentCashMovements];
   renderOpenCashNumbers();
   renderCashMovements();
-  e.currentTarget.reset();
+
+  if(statusEl){
+    statusEl.textContent=registerExpense?"Salvando saída e despesa...":"Salvando movimentação...";
+    statusEl.dataset.state="loading";
+  }
   cashSetBusy(btn,true,"Salvando...");
 
   try{
-    const payload={
-      cash_register_id:currentCashRegister.id,
-      movement_type:type,
-      amount,
-      description,
-      operation_key:operationKey
-    };
+    const {data,error}=await sb.rpc("add_cash_movement_v41",{
+      p_cash_register_id:currentCashRegister.id,
+      p_movement_type:type,
+      p_amount:amount,
+      p_description:description,
+      p_operation_key:operationKey,
+      p_register_expense:registerExpense,
+      p_expense_category:expenseCategory
+    });
+    if(error)throw error;
 
-    let {data,error}=await sb.from("cash_movements").insert(payload).select("*").single();
-
-    // Em conexão instável, o banco pode ter confirmado a gravação
-    // mesmo que o navegador tenha perdido a resposta.
-    if(error||!data){
-      const verify=await sb.from("cash_movements")
-        .select("*")
-        .eq("operation_key",operationKey)
-        .maybeSingle();
-
-      if(verify.data){
-        data=verify.data;
-        error=null;
-      }
-    }
-
-    if(error||!data)throw error||new Error("Não foi possível confirmar a movimentação.");
+    const movement=data?.movement;
+    const expense=data?.expense||null;
+    if(!movement?.id)throw new Error("O banco não confirmou a movimentação.");
 
     currentCashMovements=currentCashMovements.map(row=>
-      row.id===optimisticId?data:row
+      row.id===optimisticId?movement:row
     );
     renderOpenCashNumbers();
     renderCashMovements();
-    adminToast("Movimentação registrada.");
+
+    form.reset();
+    syncCashExpenseOption();
+
+    if(registerExpense&&expense?.id){
+      if(statusEl){
+        statusEl.textContent=`Saída registrada e despesa criada no Financeiro: ${cashMoney(expense.amount)}.`;
+        statusEl.dataset.state="success";
+      }
+      adminToast("Saída registrada e sincronizada com as despesas.");
+      if(typeof window.logAudit==="function"){
+        Promise.resolve(window.logAudit("create","expense",expense.id,`Despesa criada pelo caixa: ${description}`,null,expense)).catch(()=>{});
+      }
+    }else{
+      if(statusEl){
+        statusEl.textContent="Movimentação registrada com sucesso.";
+        statusEl.dataset.state="success";
+      }
+      adminToast("Movimentação registrada.");
+    }
   }catch(error){
-    // Só remove o lançamento visual se realmente não conseguimos confirmar.
     currentCashMovements=currentCashMovements.filter(row=>row.id!==optimisticId);
     renderOpenCashNumbers();
     renderCashMovements();
-    adminToast("Não foi possível confirmar a movimentação. Tente novamente.",true);
-    console.error("JK Caixa addCashMovement:",error);
+    const message="Erro ao registrar movimentação: "+(error?.message||error);
+    if(statusEl){statusEl.textContent=message;statusEl.dataset.state="error";}
+    adminToast(message,true);
+    console.error("JK Caixa addCashMovement V41:",error);
   }finally{
     cashPendingMovementCount=Math.max(0,cashPendingMovementCount-1);
     cashSetBusy(btn,false);
