@@ -597,3 +597,23 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .expense-save-status[data-state="loading"]{color:#d8bd77}
 .expense-save-status[data-state="success"]{color:#82d6a3}
 .expense-save-status[data-state="error"]{color:#ff9c9c}
+
+
+/* ===== V41 CAIXA + DESPESAS SINCRONIZADAS ===== */
+.cash-expense-sync{
+  padding:12px 14px;
+  border:1px solid rgba(216,189,119,.16);
+  border-radius:14px;
+  background:rgba(216,189,119,.035);
+}
+.cash-expense-sync[hidden]{display:none!important}
+.cash-expense-sync-toggle{display:flex;align-items:flex-start;gap:10px;cursor:pointer}
+.cash-expense-sync-toggle input{margin-top:4px;accent-color:#d8bd77}
+.cash-expense-sync-toggle strong,.cash-expense-sync-toggle small{display:block}
+.cash-expense-sync-toggle small{margin-top:3px;color:#92999f;font-weight:500}
+.cash-expense-category{margin-top:12px}
+.cash-expense-category[hidden]{display:none!important}
+.cash-movement-save-status{min-height:18px;font-size:.78rem;font-weight:700}
+.cash-movement-save-status[data-state="loading"]{color:#d8bd77}
+.cash-movement-save-status[data-state="success"]{color:#82d6a3}
+.cash-movement-save-status[data-state="error"]{color:#ff9c9c}
