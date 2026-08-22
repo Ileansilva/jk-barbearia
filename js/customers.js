@@ -64,7 +64,7 @@ async function renderCustomersAdmin(){
 // ===== CARREGAMENTO DOS DADOS =====
 async function loadCustomerCRM(){
   const rows=cq("#customerRows");
-  if(rows)rows.innerHTML='<tr><td colspan="8">Carregando clientes...</td></tr>';
+  if(rows)rows.innerHTML='<tr><td colspan="9">Carregando clientes...</td></tr>';
 
   const [customersRes,bookingsRes,settingsRes]=await Promise.all([
     sb.from("jk_customers").select("*").order("full_name"),
@@ -72,7 +72,7 @@ async function loadCustomerCRM(){
       .select("id,jk_customer_id,phone,client_name,status,completed_at,booking_date,booking_time,price,service_name,barber_name")
       .eq("status","concluido"),
     sb.from("settings")
-      .select("customer_inactive_days,birthday_message_template,inactive_message_template")
+      .select("customer_inactive_days,birthday_message_template,inactive_message_template,loyalty_enabled,loyalty_goal")
       .eq("id",1)
       .single()
   ]);
@@ -350,7 +350,7 @@ function renderCustomerTable(){
 
   const list=filteredCustomerList();
   if(!list.length){
-    root.innerHTML='<tr><td colspan="8"><div class="empty">Nenhum cliente encontrado com esse filtro.</div></td></tr>';
+    root.innerHTML='<tr><td colspan="9"><div class="empty">Nenhum cliente encontrado com esse filtro.</div></td></tr>';
     return;
   }
 
@@ -363,11 +363,20 @@ function renderCustomerTable(){
       ? `${formatBRDate(c.birth_date)}${c.age!==null?`<br><span class="muted">${c.age} anos</span>`:""}`
       : '<span class="muted">Não informado</span>';
 
+    const loyaltyGoal=Math.max(2,Number(customerCRMSettings?.loyalty_goal||10));
+    const loyaltyEnabled=customerCRMSettings?.loyalty_enabled!==false;
+    const loyaltyStep=c.visitCount%loyaltyGoal;
+    const loyaltyRewards=Math.floor(c.visitCount/loyaltyGoal);
+    const loyalty=loyaltyEnabled
+      ? `<div class="loyalty-cell"><strong>${loyaltyStep}/${loyaltyGoal}</strong><div class="loyalty-bar"><span style="width:${Math.min(100,(loyaltyStep/loyaltyGoal)*100)}%"></span></div>${loyaltyRewards?`<small>${loyaltyRewards} benefício(s) alcançado(s)</small>`:""}</div>`
+      : '<span class="muted">Desativada</span>';
+
     return `<tr>
       <td><strong>${JK.esc(c.full_name)}</strong><br><span class="muted">${JK.esc(c.phone)}</span></td>
       <td>${birthday}</td>
       <td>${lastVisit}</td>
       <td><strong>${c.visitCount}</strong></td>
+      <td>${loyalty}</td>
       <td><strong>${JK.money(c.revenue)}</strong></td>
       <td><button type="button" class="mini-btn whatsapp-mini" onclick="openCustomerWhatsApp(${c.id},'inactive')">WhatsApp</button></td>
       <td><span class="customer-status-badge ${c.active===false?"inactive":"active"}">${c.active===false?"Inativo":"Ativo"}</span></td>
