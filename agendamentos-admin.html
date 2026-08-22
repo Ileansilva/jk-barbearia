@@ -30,7 +30,7 @@
       <div class="field"><label>Forma de pagamento</label><select id="walkinPayment"><option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option></select></div>
       <div id="walkinManualTimeFields" class="field">
         <label>Data e horário do encaixe</label>
-        <div class="walkin-datetime"><input id="walkinDate" type="date"><input id="walkinTime" type="time" step="300"></div>
+        <div class="walkin-datetime"><input id="walkinDate" type="date"><input id="walkinTime" type="time" step="60"></div>
       </div>
       <div class="field full"><label>Observação</label><input id="walkinNotes" maxlength="250" placeholder="Opcional"></div>
       <div class="field full walkin-form-actions"><button class="btn btn-primary" type="submit">Adicionar atendimento</button></div>
@@ -46,4 +46,4 @@
   </article>
 </section>
 <section id="appointments" class="panel active"><div class="card"><div class="card-head"><h2>Agendamentos</h2></div><div class="table-wrap"><table class="table"><thead><tr><th>Cliente</th><th>Barbeiro</th><th>Serviço</th><th>Data</th><th>Valor</th><th>Pagamento</th><th>Status</th><th>Obs.</th><th>Ações</th></tr></thead><tbody id="bookingRows"></tbody></table></div></div></section></main></div><!-- ===== SCRIPTS / FUNCIONALIDADES ===== -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/walkins.js"></script><script src="js/admin.js"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/walkins.js?v=42"></script><script src="js/admin.js?v=40"></script></body></html>
