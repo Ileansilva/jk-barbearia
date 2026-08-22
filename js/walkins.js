@@ -21,7 +21,11 @@ const wq=s=>document.querySelector(s);
 
 document.addEventListener("DOMContentLoaded",()=>{
   if(document.body?.dataset?.adminPage!=="appointments")return;
-  wq("#openWalkinFormBtn")?.addEventListener("click",()=>{wq("#walkinFormCard").hidden=false;wq("#walkinName")?.focus();});
+  wq("#openWalkinFormBtn")?.addEventListener("click",()=>{
+    wq("#walkinFormCard").hidden=false;
+    if(wq("#walkinMode")?.value==="encaixe")setWalkinNow();
+    wq("#walkinName")?.focus();
+  });
   wq("#closeWalkinFormBtn")?.addEventListener("click",()=>wq("#walkinFormCard").hidden=true);
   wq("#walkinMode")?.addEventListener("change",syncWalkinMode);
   wq("#walkinCustomer")?.addEventListener("change",fillWalkinCustomer);
@@ -58,16 +62,46 @@ function fillWalkinCustomer(){
 }
 
 function localParts(){
-  const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date());
+  const parts=new Intl.DateTimeFormat("en-CA",{
+    timeZone:"America/Sao_Paulo",
+    year:"numeric",month:"2-digit",day:"2-digit",
+    hour:"2-digit",minute:"2-digit",
+    hourCycle:"h23"
+  }).formatToParts(new Date());
   const get=t=>parts.find(x=>x.type===t)?.value;
-  return {date:`${get("year")}-${get("month")}-${get("day")}`,time:`${get("hour")}:${get("minute")}`};
+  let hour=get("hour")||"00";
+  if(hour==="24")hour="00";
+  return {
+    date:`${get("year")}-${get("month")}-${get("day")}`,
+    time:`${hour}:${get("minute")||"00"}`
+  };
 }
-function setWalkinNow(){const p=localParts();if(wq("#walkinDate"))wq("#walkinDate").value=p.date;if(wq("#walkinTime"))wq("#walkinTime").value=p.time;}
+
+function setWalkinNow(force=true){
+  const p=localParts();
+  const date=wq("#walkinDate");
+  const time=wq("#walkinTime");
+  if(date&&(force||!date.value))date.value=p.date;
+  if(time&&(force||!time.value))time.value=p.time;
+  return p;
+}
+
+function normalizeWalkinTime(value){
+  const match=String(value||"").match(/^(\d{1,2}):(\d{2})/);
+  if(!match)return "";
+  const hh=Math.max(0,Math.min(23,Number(match[1])));
+  const mm=Math.max(0,Math.min(59,Number(match[2])));
+  return `${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
+}
 
 function syncWalkinMode(){
   const isQueue=wq("#walkinMode")?.value==="fila";
   if(wq("#walkinManualTimeFields"))wq("#walkinManualTimeFields").hidden=isQueue;
-  if(!isQueue)setWalkinNow();
+  if(!isQueue){
+    setWalkinNow(true);
+    const time=wq("#walkinTime");
+    if(time)time.step="60";
+  }
 }
 
 function phoneDigits(v){return String(v||"").replace(/\D/g,"");}
@@ -189,10 +223,17 @@ async function saveWalkin(e){
 
       adminToast("Cliente adicionado à fila presencial.");
     }else{
-      const date=wq("#walkinDate").value;
-      const time=wq("#walkinTime").value;
+      let date=wq("#walkinDate").value;
+      let time=normalizeWalkinTime(wq("#walkinTime").value);
 
-      if(!date||!time)throw new Error("Informe data e horário do encaixe.");
+      // Se o campo vier vazio/inválido por comportamento do navegador,
+      // recupera a hora atual de São Paulo antes de salvar.
+      if(!date||!time){
+        const now=setWalkinNow(true);
+        date=now.date;
+        time=now.time;
+      }
+      if(wq("#walkinTime"))wq("#walkinTime").value=time;
 
       const result=await sb.rpc("create_admin_walkin_booking",{
         p_client_name:name,
@@ -246,7 +287,13 @@ async function saveWalkin(e){
       return;
     }
 
-    adminToast(err?.message||"Erro ao adicionar atendimento.",true);
+    const raw=String(err?.message||"");
+    const lower=raw.toLowerCase();
+    if(mode==="encaixe"&&(lower.includes("conflito")||lower.includes("duplicate")||lower.includes("horário")||lower.includes("horario"))){
+      adminToast("Esse barbeiro já possui um atendimento nesse horário. A hora atual foi mantida; escolha outro barbeiro ou ajuste alguns minutos.",true);
+    }else{
+      adminToast(raw||"Erro ao adicionar atendimento.",true);
+    }
   }finally{
     walkinBusy(btn,false);
   }
