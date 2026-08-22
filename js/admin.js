@@ -98,27 +98,94 @@ document.addEventListener("DOMContentLoaded",async()=>{
   $("#profileHistoryFrom")?.addEventListener("change",()=>renderBarberClientHistory());
   $("#profileHistoryTo")?.addEventListener("change",()=>renderBarberClientHistory());
 
-  const {data,error}=await sb.auth.getSession();
-  if(error)console.error(error);
-  session=data?.session||null;
-  if(session){showAdmin();armBookingAlarm();startBookingRealtime();await renderCurrentPage();}
+  try{
+    if(!window.sb?.auth)throw new Error("Cliente do Supabase não foi carregado.");
+    const {data,error}=await window.sb.auth.getSession();
+    if(error)throw error;
+    session=data?.session||null;
+    if(session){
+      showAdmin();
+      armBookingAlarm();
+      startBookingRealtime();
+      try{await renderCurrentPage();}catch(pageError){console.error("JK renderCurrentPage:",pageError);adminToast("Login realizado, mas houve erro ao carregar esta página. Atualize novamente.",true);}
+    }
+  }catch(authInitError){
+    console.error("JK Auth init:",authInitError);
+    const el=$("#loginError");
+    if(el)el.textContent="Não foi possível conectar ao login. Verifique sua internet e tente novamente.";
+  }
+});
+
+// ===== DIAGNÓSTICO VISÍVEL DO LOGIN V39 =====
+window.addEventListener("error",event=>{
+  const overlay=$("#loginOverlay");
+  if(!overlay||overlay.classList.contains("hidden"))return;
+  console.error("JK Global Error:",event.error||event.message);
+  const el=$("#loginError");
+  if(el&&!el.textContent)el.textContent="O painel encontrou um erro ao carregar. Atualize a página; se continuar, use a correção V39.";
+});
+window.addEventListener("unhandledrejection",event=>{
+  const overlay=$("#loginOverlay");
+  if(!overlay||overlay.classList.contains("hidden"))return;
+  console.error("JK Unhandled Promise:",event.reason);
 });
 
 // ===== LOGIN DO PROPRIETÁRIO =====
 async function login(e){
   e.preventDefault();
-  const f=new FormData(e.currentTarget);
-  const {data,error}=await sb.auth.signInWithPassword({
-    email:String(f.get("email")||"").trim(),
-    password:String(f.get("password")||"")
-  });
-  if(error){$("#loginError").textContent="E-mail ou senha inválidos.";return;}
-  session=data.session;
-  $("#loginError").textContent="";
-  showAdmin();
-  armBookingAlarm();
-  startBookingRealtime();
-  await renderCurrentPage();
+  const form=e.currentTarget;
+  const errorEl=$("#loginError");
+  const btn=form.querySelector('button[type="submit"]');
+  const f=new FormData(form);
+  const email=String(f.get("email")||"").trim();
+  const password=String(f.get("password")||"");
+
+  if(errorEl)errorEl.textContent="";
+  if(!email||!password){
+    if(errorEl)errorEl.textContent="Informe o e-mail e a senha.";
+    return;
+  }
+  if(!window.sb?.auth){
+    if(errorEl)errorEl.textContent="O sistema de login não carregou. Atualize a página e tente novamente.";
+    return;
+  }
+
+  adminBusy(btn,true,"Entrando...");
+  try{
+    const authPromise=window.sb.auth.signInWithPassword({email,password});
+    const timeoutPromise=new Promise((_,reject)=>setTimeout(()=>reject(new Error("Tempo de conexão esgotado.")),15000));
+    const {data,error}=await Promise.race([authPromise,timeoutPromise]);
+
+    if(error)throw error;
+    if(!data?.session)throw new Error("O Supabase não retornou uma sessão válida.");
+
+    session=data.session;
+    if(errorEl)errorEl.textContent="";
+
+    // Libera o painel imediatamente. Falhas posteriores não anulam o login.
+    showAdmin();
+    armBookingAlarm();
+    startBookingRealtime();
+
+    try{
+      await renderCurrentPage();
+    }catch(pageError){
+      console.error("JK pós-login:",pageError);
+      adminToast("Login realizado. Uma parte do painel não carregou corretamente; atualize a página.",true);
+    }
+  }catch(error){
+    console.error("JK Login:",error);
+    let message="Não foi possível entrar.";
+    const raw=String(error?.message||"").toLowerCase();
+    if(raw.includes("invalid login credentials"))message="E-mail ou senha inválidos.";
+    else if(raw.includes("email not confirmed"))message="Este e-mail ainda não foi confirmado.";
+    else if(raw.includes("failed to fetch")||raw.includes("network")||raw.includes("connection"))message="Falha de conexão com o servidor. Verifique sua internet e tente novamente.";
+    else if(raw.includes("tempo de conexão"))message="O servidor demorou para responder. Tente novamente.";
+    else if(error?.message)message=`Erro no login: ${error.message}`;
+    if(errorEl)errorEl.textContent=message;
+  }finally{
+    adminBusy(btn,false);
+  }
 }
 
 
@@ -371,7 +438,7 @@ function navigateWhatsApp(win,phone,message){
 
 function showAdmin(){$("#loginOverlay")?.classList.add("hidden");}
 // ===== SAIR DO PAINEL =====
-async function logout(){stopBookingAlarm();if(bookingRealtimeChannel){try{await sb.removeChannel(bookingRealtimeChannel);}catch(e){}}await sb.auth.signOut();location.reload();}
+async function logout(){stopBookingAlarm();if(bookingRealtimeChannel){try{await sb.removeChannel(bookingRealtimeChannel);}catch(e){}}await window.sb.auth.signOut();location.reload();}
 
 function switchPanel(id,btn){
   document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
