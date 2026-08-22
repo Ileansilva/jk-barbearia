@@ -21,7 +21,6 @@ e dados da empresa pelo painel de Configurações.
 */
 
 let session=null, services=[], barbers=[], galleryItems=[], financeBookings=[], currentProfileBarberId=null, profileBarberBookings=[], financeExpenses=[];
-  await loadExpenses();
 let bookingRealtimeChannel=null;
 let bookingMessageSettingsCache=null;
 let bookingAlarmTimer=null;
@@ -1559,6 +1558,7 @@ async function renderFinance(){
     return;
   }
   financeBookings=data||[];
+  await loadExpenses();
   ensureFinanceYearOptions();
 
   const selected=$("#financeBarberSelect")?.value||"";
