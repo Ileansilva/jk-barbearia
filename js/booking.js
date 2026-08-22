@@ -369,10 +369,31 @@ function validateBookingDateAgainstSettings(date){
   return "";
 }
 
+
+function renderSmartScheduleInfo(){
+  const serviceId=Number(qs("#service")?.value||0);
+  const service=services.find(x=>Number(x.id)===serviceId);
+  let note=qs("#bookingSmartScheduleNote");
+  const root=qs("#times");
+  if(!root)return;
+  if(!note){
+    note=document.createElement("div");
+    note.id="bookingSmartScheduleNote";
+    note.className="booking-smart-note";
+    root.parentElement?.insertBefore(note,root);
+  }
+  if(service?.duration_minutes){
+    note.textContent=`Agenda inteligente: este serviço dura cerca de ${service.duration_minutes} min. Os horários abaixo já evitam conflitos e aproveitam os espaços livres do barbeiro.`;
+  }else{
+    note.textContent="Os horários são calculados automaticamente conforme a duração do serviço e a agenda do barbeiro.";
+  }
+}
+
 // ===== BUSCA HORÁRIOS DISPONÍVEIS NO SUPABASE =====
 async function renderTimes(){
   selectedTime="";
   renderSummary();
+  renderSmartScheduleInfo();
 
   const date=qs("#date")?.value||"";
   const serviceId=Number(qs("#service")?.value||0);
