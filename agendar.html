@@ -23,7 +23,7 @@
 <div id="bookingBarberCards" class="booking-barber-cards"><div class="empty">Carregando barbeiros...</div></div>
 <select id="barber" name="barber" required class="barber-select-fallback"><option>Carregando...</option></select>
 </div><div class="field full"><label>Data</label><div class="booking-date-shell"><input id="date" name="date" class="date-picker-public" type="date" required><span class="booking-date-hint">Escolha o dia do atendimento</span></div></div><div class="field full"><label>Horários disponíveis</label><!-- ===== HORÁRIOS DISPONÍVEIS ===== -->
-<div id="times" class="time-grid"><div class="empty" style="grid-column:1/-1">Escolha serviço, barbeiro e data.</div></div></div>
+<div data-smart-note="true" id="times" class="time-grid"><div class="empty" style="grid-column:1/-1">Escolha serviço, barbeiro e data.</div></div></div>
 <!-- ===== FORMA DE PAGAMENTO ===== -->
 <div class="field full">
   <label>Como pretende pagar?</label>
@@ -51,4 +51,4 @@
 </div>
 <div class="field full"><label>Observação</label><textarea name="notes" rows="4" maxlength="250"></textarea></div><div class="field full"><button class="btn btn-primary" type="submit">Confirmar agendamento</button></div></form></section></div></main>
 <div id="toast" class="toast"></div><!-- ===== SCRIPTS / FUNCIONALIDADES ===== -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/booking.js"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/config.js"></script><script src="js/supabase-client.js"></script><script src="js/booking.js?v=43"></script></body></html>
